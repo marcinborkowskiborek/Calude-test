@@ -407,9 +407,18 @@ class ContactExtractor {
 
       // Send data to background script for download
       if (this.extractedData.length > 0) {
+        console.log('📤 Sending data to background script...');
         chrome.runtime.sendMessage({
           action: 'downloadContacts',
           data: this.extractedData
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ Error sending message:', chrome.runtime.lastError);
+            console.log('💡 Trying alternative download method...');
+            this.downloadDirectly();
+          } else {
+            console.log('✅ Data sent successfully:', response);
+          }
         });
       } else {
         console.warn('⚠️ No data to download');
@@ -426,6 +435,33 @@ class ContactExtractor {
 
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Direct download method (fallback if background worker fails)
+  downloadDirectly() {
+    console.log('📥 Starting direct download...');
+    try {
+      const markdown = this.generateMarkdown();
+      const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `kontakty_${timestamp}.md`;
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+
+      console.log('✅ Direct download triggered!');
+    } catch (error) {
+      console.error('❌ Direct download failed:', error);
+    }
   }
 
   // Generate markdown from extracted data
