@@ -13,7 +13,7 @@ class ContactExtractor {
     console.log('🔍 Starting button search...');
 
     // Strategy 1: Find by text content (most reliable)
-    const allClickableElements = document.querySelectorAll('button, a, div[onclick], span[onclick], div[role="button"], [class*="button"], [class*="btn"]');
+    const allClickableElements = document.querySelectorAll('button, a, div[onclick], span[onclick], .phone-contact, div[role="button"], [class*="button"], [class*="btn"]');
     console.log(`Found ${allClickableElements.length} clickable elements to check`);
 
     allClickableElements.forEach((el, index) => {
