@@ -139,6 +139,7 @@ class ContactExtractor {
       phone: '',
       email: '',
       url: window.location.href,
+      offerUrl: '',
       extractedAt: new Date().toISOString()
     };
 
@@ -185,6 +186,38 @@ class ContactExtractor {
         if (titleEl) {
           data.title = titleEl.textContent.trim();
           console.log(`  Title: ${data.title.substring(0, 50)}...`);
+
+          // If title element is a link or contains a link, extract the offer URL
+          if (titleEl.tagName === 'A' && titleEl.href) {
+            data.offerUrl = titleEl.href;
+            console.log(`  Offer URL: ${data.offerUrl}`);
+          } else {
+            const linkInTitle = titleEl.querySelector('a');
+            if (linkInTitle && linkInTitle.href) {
+              data.offerUrl = linkInTitle.href;
+              console.log(`  Offer URL: ${data.offerUrl}`);
+            }
+          }
+        }
+
+        // If no offer URL found yet, search for link with "Źródło oferty" or similar
+        if (!data.offerUrl) {
+          const offerLinks = container.querySelectorAll('a[href*="oferta"], a[href*="offer"], a[href*="Offer"], a[href*="advert"]');
+          for (const link of offerLinks) {
+            // Skip links that are buttons or icons
+            const linkText = link.textContent.trim().toLowerCase();
+            const isValidLink = link.href &&
+                               link.href !== window.location.href &&
+                               !link.href.includes('#') &&
+                               !linkText.includes('koszyk') &&
+                               !linkText.includes('mapa');
+
+            if (isValidLink) {
+              data.offerUrl = link.href;
+              console.log(`  Offer URL (from search): ${data.offerUrl}`);
+              break;
+            }
+          }
         }
 
         // Extract location - multiple strategies
@@ -499,10 +532,19 @@ class ContactExtractor {
       }
 
       if (item.id) {
-        markdown += `**ID:** ${item.id}\n\n`;
+        markdown += `**ID oferty:** ${item.id}\n\n`;
       }
 
-      markdown += `**URL:** ${item.url}\n\n`;
+      if (item.offerUrl) {
+        markdown += `**Link do oferty:** ${item.offerUrl}\n\n`;
+      }
+
+      markdown += `**Źródło:** ${item.url}\n\n`;
+
+      if (item.extractedAt) {
+        markdown += `*Wyciągnięto: ${new Date(item.extractedAt).toLocaleString('pl-PL')}*\n\n`;
+      }
+
       markdown += `---\n\n`;
     });
 

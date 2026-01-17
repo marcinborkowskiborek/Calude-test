@@ -38,6 +38,10 @@ function generateMarkdown(data) {
       markdown += `**ID oferty:** ${item.id}\n\n`;
     }
 
+    if (item.offerUrl) {
+      markdown += `**Link do oferty:** ${item.offerUrl}\n\n`;
+    }
+
     if (item.url) {
       markdown += `**Źródło:** ${item.url}\n\n`;
     }
