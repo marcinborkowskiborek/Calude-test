@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Extractor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 350px;
+      min-height: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .header {
+      text-align: center;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .info-box {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .info-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .info-label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .info-value {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .button {
+      background: #fff;
+      color: #667eea;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .button.secondary {
+      background: transparent;
+      color: #fff;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      box-shadow: none;
+    }
+
+    .button.secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .status {
+      text-align: center;
+      font-size: 14px;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      margin-top: 10px;
+    }
+
+    .status.error {
+      background: rgba(255, 68, 68, 0.2);
+      border: 1px solid rgba(255, 68, 68, 0.4);
+    }
+
+    .status.success {
+      background: rgba(46, 213, 115, 0.2);
+      border: 1px solid rgba(46, 213, 115, 0.4);
+    }
+
+    .status.loading {
+      background: rgba(255, 200, 87, 0.2);
+      border: 1px solid rgba(255, 200, 87, 0.4);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .instructions {
+      font-size: 13px;
+      line-height: 1.6;
+      opacity: 0.9;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 8px;
+      border-left: 3px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .instructions ol {
+      margin-left: 20px;
+      margin-top: 8px;
+    }
+
+    .instructions li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📇 Contact Extractor</h1>
+      <p class="subtitle">Automatyczne wyciąganie kontaktów</p>
+    </div>
+
+    <div class="info-box">
+      <div class="info-item">
+        <span class="info-label">Status:</span>
+        <span class="info-value" id="statusText">Gotowy</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Znalezione kontakty:</span>
+        <span class="info-value" id="contactCount">0</span>
+      </div>
+    </div>
+
+    <button class="button" id="extractBtn">
+      🚀 Start Extraction
+    </button>
+
+    <button class="button secondary" id="refreshBtn">
+      🔄 Odśwież status
+    </button>
+
+    <div class="instructions">
+      <strong>Jak używać:</strong>
+      <ol>
+        <li>Przejdź na stronę z ofertami</li>
+        <li>Kliknij "Start Extraction"</li>
+        <li>Poczekaj na zakończenie</li>
+        <li>Plik MD zostanie pobrany automatycznie</li>
+      </ol>
+    </div>
+
+    <div id="statusMessage" class="status" style="display: none;"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

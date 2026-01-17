@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#grad)"/>
+
+  <!-- Contact card icon -->
+  <rect x="30" y="40" width="68" height="48" rx="4" fill="white" opacity="0.9"/>
+
+  <!-- Lines representing text -->
+  <rect x="40" y="50" width="30" height="4" rx="2" fill="#667eea"/>
+  <rect x="40" y="58" width="48" height="3" rx="1.5" fill="#764ba2" opacity="0.6"/>
+  <rect x="40" y="65" width="40" height="3" rx="1.5" fill="#764ba2" opacity="0.6"/>
+
+  <!-- Phone icon -->
+  <path d="M 42 75 L 46 75 C 47 75 48 76 48 77 L 48 82 C 48 83 47 84 46 84 L 42 84 C 41 84 40 83 40 82 L 40 77 C 40 76 41 75 42 75 Z" fill="#667eea"/>
+  <circle cx="44" cy="81" r="1" fill="white"/>
+
+  <!-- Email icon -->
+  <path d="M 54 75 L 66 75 L 60 80 Z" fill="#764ba2"/>
+  <rect x="54" y="75" width="12" height="9" fill="none" stroke="#764ba2" stroke-width="1"/>
+</svg>
