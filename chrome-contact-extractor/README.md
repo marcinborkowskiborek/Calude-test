@@ -109,14 +109,22 @@ w ciągu kilku miesięcy...
 
 ## 🛠️ Rozwiązywanie problemów
 
+> 💡 **Szczegółowy przewodnik debugowania**: Zobacz [DEBUG.md](DEBUG.md) dla dokładnych instrukcji krok po kroku!
+
 ### Rozszerzenie nie znajduje przycisków
 
 **Problem**: Licznik kontaktów pozostaje na 0
 
 **Rozwiązanie**:
-- Upewnij się, że jesteś na stronie z ofertami
-- Sprawdź czy przyciski "Pokaż kontakt" są widoczne
-- Niektóre strony mogą używać innych nazw przycisków - skontaktuj się z developerem w celu dostosowania
+1. Otwórz konsolę deweloperską (F12)
+2. Uruchom w konsoli: `extractor.testExtraction()`
+3. Zobacz szczegółowe logi co wtyczka znajduje
+4. Przeczytaj pełny przewodnik w [DEBUG.md](DEBUG.md)
+
+**Szybki test:**
+- Otwórz konsolę (F12)
+- Wpisz: `extractor.findContactButtons()`
+- Sprawdź co zostało znalezione
 
 ### Nie wszystkie kontakty zostały wyciągnięte
 

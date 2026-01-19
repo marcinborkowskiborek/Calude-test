@@ -38,6 +38,10 @@ function generateMarkdown(data) {
       markdown += `**ID oferty:** ${item.id}\n\n`;
     }
 
+    if (item.offerUrl) {
+      markdown += `**Link do oferty:** ${item.offerUrl}\n\n`;
+    }
+
     if (item.url) {
       markdown += `**Źródło:** ${item.url}\n\n`;
     }
@@ -55,23 +59,24 @@ function generateMarkdown(data) {
 // Download markdown file
 function downloadMarkdown(data) {
   const markdown = generateMarkdown(data);
-  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
+
+  // Use data URL instead of blob URL (Manifest v3 service workers don't support URL.createObjectURL)
+  const dataUrl = 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown);
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
   const filename = `kontakty_${timestamp}.md`;
 
+  console.log('Starting download...');
+
   chrome.downloads.download({
-    url: url,
+    url: dataUrl,
     filename: filename,
     saveAs: true
   }, (downloadId) => {
     if (chrome.runtime.lastError) {
       console.error('Download error:', chrome.runtime.lastError);
     } else {
-      console.log('Download started with ID:', downloadId);
-      // Clean up the object URL after a delay
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      console.log('✅ Download started with ID:', downloadId);
     }
   });
 }
