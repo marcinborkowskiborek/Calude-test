@@ -1,6 +1,6 @@
 /**
  * SADS CRM Automation - Popup Script
- * v2.0.7 - Auto-continue after page reload
+ * v2.0.9 - Fire and forget (nie czekaj na odpowiedź)
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -23,27 +23,11 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.storage.local.set({ schemaName: schemaInput.value });
     });
 
-    /**
-     * Pokazuje status
-     */
     function showStatus(message, type) {
         statusDiv.textContent = message;
         statusDiv.className = `status show ${type}`;
     }
 
-    /**
-     * Ustawia stan przycisku
-     */
-    function setButtonState(loading) {
-        runBtn.disabled = loading;
-        playIcon.style.display = loading ? 'none' : 'block';
-        loadingIcon.style.display = loading ? 'block' : 'none';
-        btnText.textContent = loading ? 'Pracuję...' : 'Uruchom automatyzację';
-    }
-
-    /**
-     * Uruchamia automatyzację
-     */
     async function runAutomation() {
         const schemaName = schemaInput.value.trim();
 
@@ -52,44 +36,35 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Zapisz nazwę schematu
         chrome.storage.local.set({ schemaName });
-
-        setButtonState(true);
-        showStatus('Uruchamiam automatyzację...', 'info');
 
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
             if (!tab) {
-                throw new Error('Nie można pobrać aktywnej karty');
+                showStatus('Nie można pobrać aktywnej karty', 'error');
+                return;
             }
 
+            // Wyślij wiadomość BEZ czekania na odpowiedź (fire and forget)
             chrome.tabs.sendMessage(tab.id, {
                 action: 'runAutomation',
                 config: { schemaName }
-            }, function(response) {
-                setButtonState(false);
-
-                if (chrome.runtime.lastError) {
-                    showStatus('Odśwież stronę SADS i spróbuj ponownie', 'error');
-                    return;
-                }
-
-                if (response && response.success) {
-                    showStatus(response.message, 'success');
-                } else {
-                    showStatus(response?.message || 'Wystąpił błąd', 'error');
-                }
             });
 
+            // Od razu pokaż sukces - skrypt działa w tle
+            showStatus('Automatyzacja uruchomiona! Obserwuj stronę i konsolę (F12).', 'success');
+
+            // Zamknij popup po 2 sekundach
+            setTimeout(() => {
+                window.close();
+            }, 2000);
+
         } catch (error) {
-            setButtonState(false);
             showStatus(`Błąd: ${error.message}`, 'error');
         }
     }
 
-    // Event listeners
     runBtn.addEventListener('click', runAutomation);
 
     schemaInput.addEventListener('keypress', function(e) {
