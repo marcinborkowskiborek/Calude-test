@@ -75,21 +75,34 @@
      * Znajduje przycisk "Powiadomienia i schematy"
      */
     function findNotificationsButton() {
-        // Szukamy przycisku po tekście
-        const allElements = document.querySelectorAll('button, a, div[role="button"], span, div');
+        // Szukamy ikony glyphicon-floppy-disk (przycisk "Powiadomienia i schematy")
+        const floppyIcon = document.querySelector('.glyphicon-floppy-disk');
+        if (floppyIcon) {
+            // Zwracamy rodzica - klikalny element (button, a, div)
+            const clickable = floppyIcon.closest('button, a, [role="button"], .btn, div[onclick]') || floppyIcon.parentElement;
+            if (clickable) {
+                log('Znaleziono przycisk przez ikonę glyphicon-floppy-disk', 'success');
+                return clickable;
+            }
+        }
 
+        // Alternatywnie szukamy po tekście
+        const allElements = document.querySelectorAll('button, a, div[role="button"], span, div');
         for (const el of allElements) {
             const text = el.textContent || el.innerText || '';
             if (text.includes('Powiadomienia i schematy') ||
-                text.includes('Powiadomienia') && text.includes('schematy')) {
-                log(`Znaleziono przycisk: "${text.trim().substring(0, 50)}..."`, 'success');
+                (text.includes('Powiadomienia') && text.includes('schematy'))) {
+                log(`Znaleziono przycisk po tekście: "${text.trim().substring(0, 50)}..."`, 'success');
                 return el;
             }
         }
 
-        // Alternatywnie szukamy po atrybutach
+        // Szukamy po atrybutach title
         const byTitle = document.querySelector('[title*="Powiadomienia"], [title*="schematy"]');
-        if (byTitle) return byTitle;
+        if (byTitle) {
+            log('Znaleziono przycisk po atrybucie title', 'success');
+            return byTitle;
+        }
 
         return null;
     }
