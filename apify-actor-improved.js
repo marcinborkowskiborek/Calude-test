@@ -91,21 +91,55 @@ try {
             }
 
             // Strategy 3: Check if there's a login button/link to click first
-            const loginLinks = await page.$$('a, button');
-            for (const link of loginLinks) {
-                const text = await link.innerText().catch(() => '');
-                if (text.toLowerCase().includes('login') || text.toLowerCase().includes('logowanie')) {
-                    console.log(`🔗 Found login link with text: "${text}"`);
-                    await link.click();
-                    await page.waitForTimeout(2000);
-                    await page.screenshot({ path: 'step2-after-login-click.png', fullPage: true });
+            if (!loginFormFound) {
+                console.log('🔍 Looking for "ZALOGUJ" / "LOGIN" link...');
+                const loginLinks = await page.$$('a, button');
+                console.log(`📋 Found ${loginLinks.length} links/buttons to check`);
 
-                    // Check again for form
-                    const emailFieldAfterClick = await page.$('#AmCustomersUserEmail');
-                    if (emailFieldAfterClick) {
-                        console.log('✅ Login form appeared after clicking link!');
-                        loginFormFound = true;
-                        break;
+                for (const link of loginLinks) {
+                    const text = await link.innerText().catch(() => '');
+                    const textLower = text.toLowerCase().trim();
+
+                    // Check for Polish "zaloguj" or English "login" or "logowanie"
+                    if (textLower === 'zaloguj' || textLower === 'login' ||
+                        textLower === 'logowanie' || textLower.includes('log in')) {
+                        console.log(`🔗 Found login link with text: "${text}"`);
+
+                        try {
+                            await link.click();
+                            console.log('✅ Clicked login link');
+
+                            // Wait for navigation or form to appear
+                            await Promise.race([
+                                page.waitForNavigation({ timeout: 5000 }).catch(() => {}),
+                                page.waitForSelector('#AmCustomersUserEmail, input[type="email"]', { timeout: 5000 }).catch(() => {}),
+                                page.waitForTimeout(3000)
+                            ]);
+
+                            await page.screenshot({ path: 'step2-after-login-click.png', fullPage: true });
+                            console.log('📸 Screenshot after login click saved');
+                            console.log('📍 URL after click:', page.url());
+
+                            // Check again for form
+                            const emailFieldAfterClick = await page.$('#AmCustomersUserEmail');
+                            if (emailFieldAfterClick) {
+                                console.log('✅ Login form appeared after clicking link!');
+                                loginFormFound = true;
+                                break;
+                            } else {
+                                // Check for alternative email fields
+                                const altEmailField = await page.$('input[type="email"], input[name*="email"]');
+                                if (altEmailField) {
+                                    console.log('✅ Found alternative email field!');
+                                    loginFormFound = true;
+                                    break;
+                                } else {
+                                    console.log('⚠️ Form still not visible, trying next link...');
+                                }
+                            }
+                        } catch (e) {
+                            console.log(`⚠️ Error clicking link: ${e.message}`);
+                        }
                     }
                 }
             }
