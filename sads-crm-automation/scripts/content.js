@@ -1,6 +1,6 @@
 /**
  * SADS CRM Automation - Content Script
- * Automatyzacja wyszukiwania w schematach CRM
+ * v2.0.7 - Automatyczne kontynuowanie po przeładowaniu strony
  */
 
 (function() {
@@ -8,15 +8,16 @@
 
     // Konfiguracja
     const CONFIG = {
-        schemaName: 'Marcin Borkowski Nowe', // Nazwa schematu do wyszukania
+        schemaName: 'Marcin Borkowski Nowe',
         delays: {
-            afterButtonClick: 1000,  // Opóźnienie po kliknięciu przycisku
-            betweenActions: 500,     // Opóźnienie między akcjami
-            waitForModal: 2000       // Maksymalny czas oczekiwania na modal
+            afterButtonClick: 1000,
+            betweenActions: 500,
+            waitForModal: 2000,
+            waitForPageLoad: 3000
         }
     };
 
-    // Status automatyzacji
+    // Status
     let isRunning = false;
 
     /**
@@ -41,44 +42,44 @@
     }
 
     /**
-     * Czeka na pojawienie się elementu w DOM
+     * Zapisuje stan automatyzacji
      */
-    function waitForElement(selector, timeout = 5000, parent = document) {
-        return new Promise((resolve, reject) => {
-            const element = parent.querySelector(selector);
-            if (element) {
-                resolve(element);
-                return;
-            }
+    function saveState(step, data = {}) {
+        const state = {
+            step,
+            schemaName: CONFIG.schemaName,
+            timestamp: Date.now(),
+            ...data
+        };
+        chrome.storage.local.set({ automationState: state });
+        log(`Zapisano stan: krok ${step}`, 'info');
+    }
 
-            const observer = new MutationObserver((mutations, obs) => {
-                const el = parent.querySelector(selector);
-                if (el) {
-                    obs.disconnect();
-                    resolve(el);
-                }
+    /**
+     * Pobiera stan automatyzacji
+     */
+    function getState() {
+        return new Promise(resolve => {
+            chrome.storage.local.get(['automationState'], result => {
+                resolve(result.automationState || null);
             });
-
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-
-            setTimeout(() => {
-                observer.disconnect();
-                reject(new Error(`Timeout: Element "${selector}" nie został znaleziony`));
-            }, timeout);
         });
+    }
+
+    /**
+     * Czyści stan automatyzacji
+     */
+    function clearState() {
+        chrome.storage.local.remove(['automationState']);
+        log('Wyczyszczono stan automatyzacji', 'info');
     }
 
     /**
      * Znajduje przycisk "Powiadomienia i schematy"
      */
     function findNotificationsButton() {
-        // Szukamy ikony glyphicon-floppy-disk (przycisk "Powiadomienia i schematy")
         const floppyIcon = document.querySelector('.glyphicon-floppy-disk');
         if (floppyIcon) {
-            // Zwracamy rodzica - klikalny element (button, a, div)
             const clickable = floppyIcon.closest('button, a, [role="button"], .btn, div[onclick]') || floppyIcon.parentElement;
             if (clickable) {
                 log('Znaleziono przycisk przez ikonę glyphicon-floppy-disk', 'success');
@@ -86,116 +87,46 @@
             }
         }
 
-        // Alternatywnie szukamy po tekście
         const allElements = document.querySelectorAll('button, a, div[role="button"], span, div');
         for (const el of allElements) {
             const text = el.textContent || el.innerText || '';
             if (text.includes('Powiadomienia i schematy') ||
                 (text.includes('Powiadomienia') && text.includes('schematy'))) {
-                log(`Znaleziono przycisk po tekście: "${text.trim().substring(0, 50)}..."`, 'success');
                 return el;
             }
         }
 
-        // Szukamy po atrybutach title
         const byTitle = document.querySelector('[title*="Powiadomienia"], [title*="schematy"]');
-        if (byTitle) {
-            log('Znaleziono przycisk po atrybucie title', 'success');
-            return byTitle;
-        }
-
-        return null;
-    }
-
-    /**
-     * Znajduje modal CRM
-     */
-    function findCRMModal() {
-        // Szukamy modala po nagłówku "CRM"
-        const modals = document.querySelectorAll('.modal, [role="dialog"], .popup, .dialog, div[class*="modal"]');
-
-        for (const modal of modals) {
-            if (modal.textContent.includes('CRM') &&
-                (modal.textContent.includes('Schematy') || modal.textContent.includes('Teczki'))) {
-                return modal;
-            }
-        }
-
-        // Szukamy po widoczności
-        const visibleModals = document.querySelectorAll('.modal.show, .modal.active, .modal[style*="display: block"]');
-        for (const modal of visibleModals) {
-            if (modal.textContent.includes('Schematy')) {
-                return modal;
-            }
-        }
+        if (byTitle) return byTitle;
 
         return null;
     }
 
     /**
      * Znajduje przycisk "Wyszukaj" dla konkretnego schematu
-     * Precyzyjne selektory bazujące na strukturze SADS:
-     * - Kontener wiersza: div.patternRecord
-     * - Przycisk: button.btn-success z onclick="patternUses(...)"
      */
     function findSearchButtonForSchema(schemaName) {
-        log(`Szukam przycisku "Wyszukaj" dla schematu: "${schemaName}"`, 'info');
+        log(`Szukam przycisku "Wyszukaj" dla: "${schemaName}"`, 'info');
 
-        // METODA 1: Szukaj w kontenerach .patternRecord (precyzyjny selektor SADS)
         const patternRecords = document.querySelectorAll('.patternRecord');
         log(`Znaleziono ${patternRecords.length} wierszy .patternRecord`, 'info');
 
         for (const record of patternRecords) {
             const recordText = record.textContent || '';
-
-            // Sprawdź czy wiersz zawiera nazwę schematu
             if (recordText.includes(schemaName)) {
                 log(`Znaleziono wiersz zawierający "${schemaName}"`, 'success');
-
-                // Znajdź przycisk "Wyszukaj" w tym wierszu (btn-success z glyphicon-search)
                 const searchBtn = record.querySelector('button.btn-success');
                 if (searchBtn) {
-                    const dataId = record.getAttribute('data-id');
-                    log(`Znaleziono przycisk "Wyszukaj" (data-id: ${dataId})`, 'success');
                     return searchBtn;
                 }
             }
         }
 
-        // METODA 2: Fallback - szukaj po div.patternButtons
-        log('Próbuję metody fallback...', 'info');
         const allSearchButtons = document.querySelectorAll('.patternButtons button.btn-success');
-
         for (const btn of allSearchButtons) {
-            // Znajdź rodzica .patternRecord
             const record = btn.closest('.patternRecord');
             if (record && record.textContent.includes(schemaName)) {
-                log(`Znaleziono przycisk przez .patternButtons`, 'success');
                 return btn;
-            }
-        }
-
-        // METODA 3: Ostatnia deska ratunku - szukaj wszystkich btn-success z tekstem Wyszukaj
-        log('Próbuję ostatniej metody...', 'info');
-        const allBtns = document.querySelectorAll('button.btn-success');
-
-        for (const btn of allBtns) {
-            if ((btn.textContent || '').includes('Wyszukaj')) {
-                // Idź w górę i sprawdź czy któryś rodzic zawiera nazwę schematu
-                let parent = btn.parentElement;
-                for (let i = 0; i < 10 && parent; i++) {
-                    // Sprawdź czy to jest wiersz z naszym schematem
-                    // ale nie cały modal (który zawiera wszystkie schematy)
-                    const text = parent.textContent || '';
-                    const hasOurSchema = text.includes(schemaName);
-                    const hasMultipleSearchBtns = parent.querySelectorAll('button.btn-success').length > 1;
-
-                    if (hasOurSchema && !hasMultipleSearchBtns) {
-                        log(`Znaleziono przycisk ostatnią metodą`, 'success');
-                        return btn;
-                    }
-                    parent = parent.parentElement;
-                }
             }
         }
 
@@ -208,40 +139,43 @@
     async function changeOffersCount() {
         log('Zmieniam ilość ofert na 100...', 'info');
 
-        // Znajdź dropdown z ilością ofert (pokazuje "50 ofert")
-        const dropdownTrigger = document.querySelector('.filter-option-inner-inner');
+        // Znajdź dropdown - szukamy elementu zawierającego "50 ofert"
+        const allElements = document.querySelectorAll('.filter-option-inner-inner, button, .dropdown-toggle');
+        let dropdownBtn = null;
 
-        if (!dropdownTrigger) {
-            // Alternatywnie szukaj po tekście
-            const allDivs = document.querySelectorAll('div, button, span');
-            for (const div of allDivs) {
-                if ((div.textContent || '').trim() === '50 ofert') {
-                    clickElement(div.closest('button, .dropdown-toggle, [data-toggle]') || div);
-                    await wait(500);
-                    break;
+        for (const el of allElements) {
+            const text = (el.textContent || '').trim();
+            if (text.includes('50 ofert') || text === '50 ofert') {
+                dropdownBtn = el.closest('button, .dropdown-toggle, .bootstrap-select') || el;
+                break;
+            }
+        }
+
+        if (!dropdownBtn) {
+            // Fallback: szukaj .filter-option-inner-inner
+            const trigger = document.querySelector('.filter-option-inner-inner');
+            if (trigger) {
+                dropdownBtn = trigger.closest('button, .dropdown-toggle, .bootstrap-select') || trigger;
+            }
+        }
+
+        if (dropdownBtn) {
+            clickElement(dropdownBtn);
+            await wait(800);
+
+            // Znajdź opcję "100 ofert"
+            const options = document.querySelectorAll('span.text, li a, .dropdown-item, .dropdown-menu li, option');
+            for (const opt of options) {
+                const text = (opt.textContent || '').trim();
+                if (text === '100 ofert') {
+                    clickElement(opt.closest('a, li') || opt);
+                    log('Wybrano 100 ofert', 'success');
+                    return true;
                 }
             }
-        } else {
-            // Kliknij w dropdown trigger (lub jego rodzica - przycisk)
-            const dropdownBtn = dropdownTrigger.closest('button, .dropdown-toggle, .bootstrap-select') || dropdownTrigger;
-            clickElement(dropdownBtn);
-            await wait(500);
         }
 
-        // Poczekaj na rozwinięcie menu
-        await wait(CONFIG.delays.betweenActions);
-
-        // Znajdź opcję "100 ofert"
-        const option100 = Array.from(document.querySelectorAll('span.text, li a, .dropdown-item, option'))
-            .find(el => (el.textContent || '').trim() === '100 ofert');
-
-        if (option100) {
-            clickElement(option100.closest('a, li, option') || option100);
-            log('Wybrano 100 ofert', 'success');
-            return true;
-        }
-
-        log('Nie znaleziono opcji "100 ofert"', 'warning');
+        log('Nie znaleziono opcji zmiany ilości ofert', 'warning');
         return false;
     }
 
@@ -251,11 +185,9 @@
     function selectAllOffers() {
         log('Zaznaczam wszystkie oferty...', 'info');
 
-        // Znajdź checkbox "checkAll"
         const checkAllBox = document.querySelector('input.checkAll, input#checkAll, input[data-scope="list"]');
 
         if (checkAllBox) {
-            // Upewnij się że nie jest już zaznaczony
             if (!checkAllBox.checked) {
                 checkAllBox.click();
                 log('Zaznaczono wszystkie oferty', 'success');
@@ -275,7 +207,6 @@
     function addToCart() {
         log('Dodaję do koszyka...', 'info');
 
-        // Znajdź przycisk koszyka po ikonie glyphicon-shopping-cart
         const cartIcon = document.querySelector('.glyphicon-shopping-cart');
 
         if (cartIcon) {
@@ -287,13 +218,12 @@
             }
         }
 
-        // Alternatywnie szukaj przycisku z tytułem/tekstem "koszyk"
         const buttons = document.querySelectorAll('button, a.btn');
         for (const btn of buttons) {
             const text = (btn.textContent || btn.title || '').toLowerCase();
             if (text.includes('koszyk') || text.includes('cart')) {
                 clickElement(btn);
-                log('Kliknięto przycisk koszyka (alternatywna metoda)', 'success');
+                log('Kliknięto przycisk koszyka', 'success');
                 return true;
             }
         }
@@ -303,7 +233,7 @@
     }
 
     /**
-     * Kliknięcie z symulacją naturalnego zachowania
+     * Kliknięcie elementu
      */
     function clickElement(element) {
         if (!element) {
@@ -312,18 +242,12 @@
         }
 
         try {
-            // Scroll do elementu
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // Symulacja hover
             element.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
             element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-
-            // Kliknięcie
             element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
             element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
             element.click();
-
             return true;
         } catch (error) {
             log(`Błąd kliknięcia: ${error.message}`, 'error');
@@ -332,129 +256,154 @@
     }
 
     /**
-     * ETAP 1: Otwórz schematy i kliknij "Wyszukaj"
+     * KROK 1: Otwórz schematy i kliknij "Wyszukaj"
      */
-    async function runStep1() {
-        if (isRunning) {
-            log('Automatyzacja już działa', 'warning');
-            return { success: false, message: 'Automatyzacja już działa' };
+    async function executeStep1() {
+        log('=== KROK 1: Otwieram schematy i klikam Wyszukaj ===', 'info');
+
+        const notifButton = findNotificationsButton();
+        if (!notifButton) {
+            throw new Error('Nie znaleziono przycisku "Powiadomienia i schematy"');
         }
 
-        isRunning = true;
-        log('=== ETAP 1: Wyszukiwanie ofert ===', 'info');
+        clickElement(notifButton);
+        log('Kliknięto "Powiadomienia i schematy"', 'success');
 
-        try {
-            // KROK 1: Znajdź i kliknij "Powiadomienia i schematy"
-            log('Szukam przycisku "Powiadomienia i schematy"...', 'info');
-            const notifButton = findNotificationsButton();
+        await wait(CONFIG.delays.afterButtonClick);
+        await wait(CONFIG.delays.waitForModal);
 
-            if (!notifButton) {
-                throw new Error('Nie znaleziono przycisku "Powiadomienia i schematy"');
-            }
+        const searchButton = findSearchButtonForSchema(CONFIG.schemaName);
+        if (!searchButton) {
+            throw new Error(`Nie znaleziono schematu "${CONFIG.schemaName}"`);
+        }
 
-            clickElement(notifButton);
-            log('Kliknięto przycisk "Powiadomienia i schematy"', 'success');
+        await wait(CONFIG.delays.betweenActions);
 
-            // Czekamy na otwarcie modala
-            await wait(CONFIG.delays.afterButtonClick);
-            await wait(CONFIG.delays.waitForModal);
+        // Zapisz stan PRZED kliknięciem (strona się przeładuje)
+        saveState(2);
 
-            // KROK 2: Znajdź przycisk "Wyszukaj" dla konkretnego schematu
-            log(`Szukam przycisku "Wyszukaj" dla "${CONFIG.schemaName}"...`, 'info');
-            await wait(CONFIG.delays.betweenActions);
+        clickElement(searchButton);
+        log('Kliknięto "Wyszukaj" - strona się przeładuje...', 'success');
+    }
 
-            const searchButton = findSearchButtonForSchema(CONFIG.schemaName);
+    /**
+     * KROK 2: Zmień na 100 ofert
+     */
+    async function executeStep2() {
+        log('=== KROK 2: Zmieniam ilość ofert na 100 ===', 'info');
 
-            if (!searchButton) {
-                throw new Error(`Nie znaleziono schematu "${CONFIG.schemaName}"`);
-            }
+        // Zapisz stan PRZED zmianą (strona się przeładuje)
+        saveState(3);
 
-            // KROK 3: Kliknij przycisk "Wyszukaj"
-            await wait(CONFIG.delays.betweenActions);
-            clickElement(searchButton);
-            log('Kliknięto przycisk "Wyszukaj"!', 'success');
-
-            isRunning = false;
-            return {
-                success: true,
-                message: 'Etap 1 OK! Poczekaj na wyniki, potem kliknij Etap 2.'
-            };
-
-        } catch (error) {
-            log(`Błąd: ${error.message}`, 'error');
-            isRunning = false;
-            return {
-                success: false,
-                message: error.message
-            };
+        const changed = await changeOffersCount();
+        if (changed) {
+            log('Zmiana na 100 ofert - strona się przeładuje...', 'success');
+        } else {
+            // Jeśli nie udało się zmienić, przejdź do kroku 3
+            log('Nie zmieniono ilości ofert, kontynuuję...', 'warning');
+            await executeStep3();
         }
     }
 
     /**
-     * ETAP 2: Zmień na 100 ofert, zaznacz wszystko, dodaj do koszyka
+     * KROK 3: Zaznacz wszystko i dodaj do koszyka
      */
-    async function runStep2() {
+    async function executeStep3() {
+        log('=== KROK 3: Zaznaczam i dodaję do koszyka ===', 'info');
+
+        // Zaznacz wszystkie oferty
+        let checkboxFound = selectAllOffers();
+        if (!checkboxFound) {
+            await wait(2000);
+            checkboxFound = selectAllOffers();
+        }
+
+        if (!checkboxFound) {
+            clearState();
+            throw new Error('Nie znaleziono checkboxa');
+        }
+
+        await wait(1000);
+
+        // Dodaj do koszyka
+        let cartClicked = addToCart();
+        if (!cartClicked) {
+            await wait(2000);
+            cartClicked = addToCart();
+        }
+
+        // Wyczyść stan - automatyzacja zakończona
+        clearState();
+
+        if (cartClicked) {
+            log('=== AUTOMATYZACJA ZAKOŃCZONA! Oferty w koszyku. ===', 'success');
+        } else {
+            throw new Error('Nie znaleziono przycisku koszyka');
+        }
+    }
+
+    /**
+     * Główna funkcja - uruchamia pełną automatyzację
+     */
+    async function runFullAutomation() {
         if (isRunning) {
-            log('Automatyzacja już działa', 'warning');
             return { success: false, message: 'Automatyzacja już działa' };
         }
 
         isRunning = true;
-        log('=== ETAP 2: Zaznaczanie i koszyk ===', 'info');
+        log('=== ROZPOCZYNAM PEŁNĄ AUTOMATYZACJĘ ===', 'info');
 
         try {
-            // KROK 1: Zmień ilość ofert na 100
-            log('Zmieniam ilość ofert na 100...', 'info');
-            await changeOffersCount();
-
-            // Czekamy na przeładowanie listy
-            log('Czekam na załadowanie 100 ofert...', 'info');
-            await wait(4000);
-
-            // KROK 2: Zaznacz wszystkie oferty
-            log('Zaznaczam wszystkie oferty...', 'info');
-            let checkboxFound = selectAllOffers();
-
-            if (!checkboxFound) {
-                log('Checkbox nie znaleziony, próbuję ponownie...', 'warning');
-                await wait(2000);
-                checkboxFound = selectAllOffers();
-            }
-
-            if (!checkboxFound) {
-                throw new Error('Nie znaleziono checkboxa "Zaznacz wszystko"');
-            }
-
-            await wait(1000);
-
-            // KROK 3: Dodaj do koszyka
-            log('Dodaję do koszyka...', 'info');
-            let cartClicked = addToCart();
-
-            if (!cartClicked) {
-                log('Koszyk nie znaleziony, próbuję ponownie...', 'warning');
-                await wait(2000);
-                cartClicked = addToCart();
-            }
-
-            if (!cartClicked) {
-                throw new Error('Nie znaleziono przycisku koszyka');
-            }
+            await executeStep1();
+            // Po kliknięciu Wyszukaj strona się przeładuje
+            // Kontynuacja nastąpi automatycznie po załadowaniu
 
             isRunning = false;
             return {
                 success: true,
-                message: 'Gotowe! Oferty dodane do koszyka.'
+                message: 'Etap 1 rozpoczęty. Automatyzacja będzie kontynuowana po przeładowaniu.'
             };
-
         } catch (error) {
             log(`Błąd: ${error.message}`, 'error');
+            clearState();
             isRunning = false;
-            return {
-                success: false,
-                message: error.message
-            };
+            return { success: false, message: error.message };
         }
+    }
+
+    /**
+     * Kontynuuje automatyzację od zapisanego stanu
+     */
+    async function continueAutomation(state) {
+        log(`Kontynuuję automatyzację od kroku ${state.step}...`, 'info');
+        CONFIG.schemaName = state.schemaName;
+
+        // Sprawdź czy stan nie jest za stary (max 5 minut)
+        const age = Date.now() - state.timestamp;
+        if (age > 5 * 60 * 1000) {
+            log('Stan automatyzacji wygasł (>5 min)', 'warning');
+            clearState();
+            return;
+        }
+
+        isRunning = true;
+
+        try {
+            if (state.step === 2) {
+                // Po kliknięciu "Wyszukaj" - zmień na 100 ofert
+                await wait(CONFIG.delays.waitForPageLoad);
+                await executeStep2();
+            } else if (state.step === 3) {
+                // Po zmianie na 100 - zaznacz i dodaj do koszyka
+                await wait(CONFIG.delays.waitForPageLoad);
+                await executeStep3();
+            }
+        } catch (error) {
+            log(`Błąd kontynuacji: ${error.message}`, 'error');
+            clearState();
+        }
+
+        isRunning = false;
     }
 
     /**
@@ -463,49 +412,53 @@
     function updateConfig(newConfig) {
         if (newConfig.schemaName) {
             CONFIG.schemaName = newConfig.schemaName;
-            log(`Zmieniono nazwę schematu na: ${CONFIG.schemaName}`, 'info');
-        }
-        if (newConfig.delays) {
-            Object.assign(CONFIG.delays, newConfig.delays);
+            log(`Nazwa schematu: ${CONFIG.schemaName}`, 'info');
         }
     }
 
     // Nasłuchiwanie wiadomości z popup
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        // ETAP 1: Wyszukaj oferty
-        if (request.action === 'runStep1') {
+        if (request.action === 'runAutomation') {
             if (request.config) {
                 updateConfig(request.config);
             }
-            runStep1().then(result => {
-                sendResponse(result);
-            });
-            return true;
-        }
-
-        // ETAP 2: Zaznacz i dodaj do koszyka
-        if (request.action === 'runStep2') {
-            runStep2().then(result => {
+            runFullAutomation().then(result => {
                 sendResponse(result);
             });
             return true;
         }
 
         if (request.action === 'getStatus') {
-            sendResponse({
-                isRunning,
-                config: CONFIG
-            });
+            sendResponse({ isRunning, config: CONFIG });
             return true;
         }
 
-        if (request.action === 'updateConfig') {
-            updateConfig(request.config);
-            sendResponse({ success: true, config: CONFIG });
+        if (request.action === 'cancelAutomation') {
+            clearState();
+            isRunning = false;
+            sendResponse({ success: true, message: 'Automatyzacja anulowana' });
             return true;
         }
     });
 
-    log('Content script załadowany i gotowy', 'success');
+    // ============================================
+    // AUTOMATYCZNE KONTYNUOWANIE PO ZAŁADOWANIU
+    // ============================================
+    async function checkAndContinue() {
+        const state = await getState();
+        if (state && state.step) {
+            log(`Znaleziono zapisany stan: krok ${state.step}`, 'info');
+            await continueAutomation(state);
+        } else {
+            log('Content script załadowany i gotowy', 'success');
+        }
+    }
+
+    // Uruchom sprawdzanie stanu po załadowaniu strony
+    if (document.readyState === 'complete') {
+        checkAndContinue();
+    } else {
+        window.addEventListener('load', checkAndContinue);
+    }
 
 })();
