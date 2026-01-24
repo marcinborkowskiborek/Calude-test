@@ -2,7 +2,7 @@
 // This is the complete code to paste into Apify Actor's src/main.js
 
 import { Actor } from 'apify';
-import { playwright } from 'crawlee';
+import { chromium } from 'playwright';
 
 await Actor.init();
 
@@ -17,7 +17,7 @@ console.log('🚀 Starting SADS Contact Extractor...');
 console.log(`📧 Username: ${username}`);
 
 // Launch browser
-const browser = await playwright.chromium.launch({
+const browser = await chromium.launch({
     headless: true,
     args: [
         '--no-sandbox',
