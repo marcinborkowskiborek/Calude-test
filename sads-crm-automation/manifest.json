@@ -1,15 +1,14 @@
 {
   "manifest_version": 3,
   "name": "SADS CRM Automation",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Automatyzacja wyszukiwania w SADS CRM - klikanie schematów i wyszukiwanie",
   "permissions": [
     "activeTab",
     "storage"
   ],
   "host_permissions": [
-    "*://*.sfrm.pl/*",
-    "*://*.sads.pl/*"
+    "<all_urls>"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -21,7 +20,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.sfrm.pl/*", "*://*.sads.pl/*"],
+      "matches": ["<all_urls>"],
       "js": ["scripts/content.js"],
       "run_at": "document_idle"
     }
