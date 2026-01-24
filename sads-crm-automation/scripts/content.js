@@ -134,95 +134,68 @@
 
     /**
      * Znajduje przycisk "Wyszukaj" dla konkretnego schematu
-     * Nowe podejście: szukamy przycisku "Wyszukaj" którego kontener zawiera nazwę schematu
+     * Precyzyjne selektory bazujące na strukturze SADS:
+     * - Kontener wiersza: div.patternRecord
+     * - Przycisk: button.btn-success z onclick="patternUses(...)"
      */
     function findSearchButtonForSchema(schemaName) {
         log(`Szukam przycisku "Wyszukaj" dla schematu: "${schemaName}"`, 'info');
 
-        // Znajdź wszystkie przyciski zawierające tekst "Wyszukaj"
-        const allButtons = document.querySelectorAll('button, a.btn, .btn, [role="button"]');
-        const searchButtons = [];
+        // METODA 1: Szukaj w kontenerach .patternRecord (precyzyjny selektor SADS)
+        const patternRecords = document.querySelectorAll('.patternRecord');
+        log(`Znaleziono ${patternRecords.length} wierszy .patternRecord`, 'info');
 
-        for (const btn of allButtons) {
-            const text = btn.textContent || btn.title || '';
-            if (text.includes('Wyszukaj')) {
-                searchButtons.push(btn);
-            }
-        }
+        for (const record of patternRecords) {
+            const recordText = record.textContent || '';
 
-        log(`Znaleziono ${searchButtons.length} przycisków "Wyszukaj"`, 'info');
+            // Sprawdź czy wiersz zawiera nazwę schematu
+            if (recordText.includes(schemaName)) {
+                log(`Znaleziono wiersz zawierający "${schemaName}"`, 'success');
 
-        // Dla każdego przycisku "Wyszukaj" sprawdź czy jego kontener zawiera nazwę schematu
-        for (const btn of searchButtons) {
-            // Szukamy w górę drzewa DOM kontenera który zawiera nazwę schematu
-            let container = btn.parentElement;
-
-            // Przechodzimy maksymalnie 10 poziomów w górę
-            for (let i = 0; i < 10 && container; i++) {
-                const containerText = container.textContent || '';
-
-                // Sprawdzamy czy kontener zawiera nazwę schematu
-                if (containerText.includes(schemaName)) {
-                    // Upewniamy się że to nie jest zbyt duży kontener (np. cały modal)
-                    // Kontener nie powinien zawierać więcej niż kilka przycisków "Wyszukaj"
-                    const buttonsInContainer = container.querySelectorAll('button, .btn');
-                    const searchButtonsInContainer = Array.from(buttonsInContainer).filter(b =>
-                        (b.textContent || '').includes('Wyszukaj')
-                    );
-
-                    // Jeśli kontener ma tylko 1 przycisk "Wyszukaj" - to nasz wiersz!
-                    if (searchButtonsInContainer.length === 1) {
-                        log(`Znaleziono przycisk "Wyszukaj" dla "${schemaName}" (kontener: ${container.tagName}.${container.className})`, 'success');
-                        return btn;
-                    }
-                }
-
-                container = container.parentElement;
-            }
-        }
-
-        // Alternatywna metoda: znajdź element z tekstem schematu i szukaj przycisku w pobliżu
-        log('Próbuję alternatywnej metody...', 'info');
-
-        const walker = document.createTreeWalker(
-            document.body,
-            NodeFilter.SHOW_TEXT,
-            {
-                acceptNode: (node) => {
-                    if (node.textContent.includes(schemaName)) {
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                    return NodeFilter.FILTER_REJECT;
-                }
-            }
-        );
-
-        let textNode;
-        while (textNode = walker.nextNode()) {
-            // Znaleźliśmy tekst, teraz szukamy najbliższego przycisku "Wyszukaj"
-            let element = textNode.parentElement;
-
-            for (let i = 0; i < 15 && element; i++) {
-                const searchBtn = element.querySelector('button.btn-success, .btn-success, button:has(.glyphicon-search)');
-                if (searchBtn && (searchBtn.textContent || '').includes('Wyszukaj')) {
-                    log(`Znaleziono przycisk alternatywną metodą`, 'success');
+                // Znajdź przycisk "Wyszukaj" w tym wierszu (btn-success z glyphicon-search)
+                const searchBtn = record.querySelector('button.btn-success');
+                if (searchBtn) {
+                    const dataId = record.getAttribute('data-id');
+                    log(`Znaleziono przycisk "Wyszukaj" (data-id: ${dataId})`, 'success');
                     return searchBtn;
                 }
+            }
+        }
 
-                // Szukamy też po tekście
-                const btns = element.querySelectorAll('button, .btn');
-                for (const b of btns) {
-                    if ((b.textContent || '').includes('Wyszukaj')) {
-                        // Sprawdź czy to nie jest przycisk z innego wiersza
-                        const parentText = b.closest('div, tr, li')?.textContent || '';
-                        if (parentText.includes(schemaName)) {
-                            log(`Znaleziono przycisk "Wyszukaj" alternatywną metodą`, 'success');
-                            return b;
-                        }
+        // METODA 2: Fallback - szukaj po div.patternButtons
+        log('Próbuję metody fallback...', 'info');
+        const allSearchButtons = document.querySelectorAll('.patternButtons button.btn-success');
+
+        for (const btn of allSearchButtons) {
+            // Znajdź rodzica .patternRecord
+            const record = btn.closest('.patternRecord');
+            if (record && record.textContent.includes(schemaName)) {
+                log(`Znaleziono przycisk przez .patternButtons`, 'success');
+                return btn;
+            }
+        }
+
+        // METODA 3: Ostatnia deska ratunku - szukaj wszystkich btn-success z tekstem Wyszukaj
+        log('Próbuję ostatniej metody...', 'info');
+        const allBtns = document.querySelectorAll('button.btn-success');
+
+        for (const btn of allBtns) {
+            if ((btn.textContent || '').includes('Wyszukaj')) {
+                // Idź w górę i sprawdź czy któryś rodzic zawiera nazwę schematu
+                let parent = btn.parentElement;
+                for (let i = 0; i < 10 && parent; i++) {
+                    // Sprawdź czy to jest wiersz z naszym schematem
+                    // ale nie cały modal (który zawiera wszystkie schematy)
+                    const text = parent.textContent || '';
+                    const hasOurSchema = text.includes(schemaName);
+                    const hasMultipleSearchBtns = parent.querySelectorAll('button.btn-success').length > 1;
+
+                    if (hasOurSchema && !hasMultipleSearchBtns) {
+                        log(`Znaleziono przycisk ostatnią metodą`, 'success');
+                        return btn;
                     }
+                    parent = parent.parentElement;
                 }
-
-                element = element.parentElement;
             }
         }
 
