@@ -1,6 +1,6 @@
 /**
  * SADS CRM Automation - Content Script
- * v2.1.2 - Kontynuacja po przeładowaniu strony
+ * v2.1.3 - Dodane pobieranie CSV z koszyka
  */
 
 (function() {
@@ -167,7 +167,7 @@
     }
 
     /**
-     * Dodaje do koszyka
+     * Dodaje do koszyka (ikona przy ofercie)
      */
     function addToCart() {
         const cartIcon = document.querySelector('.glyphicon-shopping-cart');
@@ -180,6 +180,66 @@
             }
         }
         log('Nie znaleziono koszyka', 'warning');
+        return false;
+    }
+
+    /**
+     * Otwiera koszyk (przycisk w nagłówku z klasą .basket)
+     */
+    function openBasket() {
+        // Szukaj przycisku z klasą "basket"
+        const basketButton = document.querySelector('button.basket');
+        if (basketButton) {
+            clickElement(basketButton);
+            log('Kliknięto przycisk koszyka', 'success');
+            return true;
+        }
+        log('Nie znaleziono przycisku koszyka', 'warning');
+        return false;
+    }
+
+    /**
+     * Klika w dropdown "Brak" i wybiera "Pobierz CSV"
+     */
+    async function downloadCSV() {
+        // Szukaj dropdown z tekstem "Brak"
+        const dropdowns = document.querySelectorAll('.filter-option-inner-inner');
+        let targetDropdown = null;
+
+        for (const dropdown of dropdowns) {
+            if ((dropdown.textContent || '').trim() === 'Brak') {
+                targetDropdown = dropdown;
+                break;
+            }
+        }
+
+        if (!targetDropdown) {
+            log('Nie znaleziono dropdown "Brak"', 'warning');
+            return false;
+        }
+
+        // Kliknij dropdown
+        const button = targetDropdown.closest('button, .dropdown-toggle, .bootstrap-select');
+        if (button) {
+            clickElement(button);
+            log('Kliknięto dropdown', 'info');
+        } else {
+            clickElement(targetDropdown);
+        }
+
+        await wait(1000);
+
+        // Szukaj opcji "Pobierz CSV"
+        const options = document.querySelectorAll('li a, .dropdown-item, span.text');
+        for (const opt of options) {
+            if ((opt.textContent || '').trim() === 'Pobierz CSV') {
+                log('Znaleziono opcję "Pobierz CSV", klikam...', 'info');
+                clickElement(opt.closest('a') || opt);
+                return true;
+            }
+        }
+
+        log('Nie znaleziono opcji "Pobierz CSV"', 'warning');
         return false;
     }
 
@@ -225,7 +285,7 @@
     }
 
     /**
-     * Wykonaj finalne kroki (zaznaczenie i koszyk)
+     * Wykonaj finalne kroki (zaznaczenie, koszyk, pobranie CSV)
      */
     async function executeFinalSteps() {
         await wait(2000);
@@ -258,6 +318,36 @@
             log('KROK 5: FAIL - nie dodano', 'error');
         }
 
+        await wait(CONFIG.delays.waitForModal);
+
+        // KROK 6: Otwórz koszyk
+        log('KROK 6: Otwieram koszyk...', 'info');
+        let basketOpened = openBasket();
+        if (!basketOpened) {
+            await wait(2000);
+            basketOpened = openBasket();
+        }
+        if (basketOpened) {
+            log('KROK 6: OK - koszyk otwarty', 'success');
+        } else {
+            log('KROK 6: FAIL - nie otwarto koszyka', 'error');
+        }
+
+        await wait(CONFIG.delays.waitForModal);
+
+        // KROK 7: Pobierz CSV
+        log('KROK 7: Pobieram CSV...', 'info');
+        let csvDownloaded = await downloadCSV();
+        if (!csvDownloaded) {
+            await wait(2000);
+            csvDownloaded = await downloadCSV();
+        }
+        if (csvDownloaded) {
+            log('KROK 7: OK - CSV pobrane', 'success');
+        } else {
+            log('KROK 7: FAIL - nie pobrano CSV', 'error');
+        }
+
         log('========================================', 'success');
         log('=== AUTOMATYZACJA ZAKOŃCZONA! ===', 'success');
         log('========================================', 'success');
@@ -276,7 +366,7 @@
 
         isRunning = true;
         log('========================================', 'info');
-        log('=== ROZPOCZYNAM AUTOMATYZACJĘ v2.1.2 ===', 'info');
+        log('=== ROZPOCZYNAM AUTOMATYZACJĘ v2.1.3 ===', 'info');
         log('========================================', 'info');
 
         try {
@@ -379,7 +469,7 @@
         }
     });
 
-    log('Content script v2.1.2 załadowany', 'success');
+    log('Content script v2.1.3 załadowany', 'success');
 
     // Sprawdź czy kontynuować automatyzację po przeładowaniu strony
     checkAndContinue();
