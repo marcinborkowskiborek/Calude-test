@@ -394,18 +394,33 @@
             log('Krok 5: Zmieniam ilość ofert na 100...', 'info');
             await changeOffersCount();
 
-            // Czekamy na przeładowanie listy
-            await wait(2000);
+            // Czekamy na przeładowanie listy (dłużej - 100 ofert to dużo danych)
+            log('Czekam na załadowanie 100 ofert...', 'info');
+            await wait(4000);
 
-            // KROK 6: Zaznacz wszystkie oferty
+            // KROK 6: Zaznacz wszystkie oferty (z retry)
             log('Krok 6: Zaznaczam wszystkie oferty...', 'info');
-            selectAllOffers();
+            let checkboxFound = selectAllOffers();
 
-            await wait(CONFIG.delays.betweenActions);
+            // Jeśli nie znaleziono, poczekaj i spróbuj ponownie
+            if (!checkboxFound) {
+                log('Checkbox nie znaleziony, czekam i próbuję ponownie...', 'warning');
+                await wait(2000);
+                checkboxFound = selectAllOffers();
+            }
 
-            // KROK 7: Dodaj do koszyka
+            await wait(1000);
+
+            // KROK 7: Dodaj do koszyka (z retry)
             log('Krok 7: Dodaję do koszyka...', 'info');
-            addToCart();
+            let cartClicked = addToCart();
+
+            // Jeśli nie znaleziono, poczekaj i spróbuj ponownie
+            if (!cartClicked) {
+                log('Koszyk nie znaleziony, czekam i próbuję ponownie...', 'warning');
+                await wait(2000);
+                cartClicked = addToCart();
+            }
 
             isRunning = false;
             return {
