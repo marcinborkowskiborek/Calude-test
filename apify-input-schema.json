@@ -1,0 +1,30 @@
+{
+    "title": "SADS CRM CSV Automation Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "username": {
+            "title": "Email (Login)",
+            "type": "string",
+            "description": "Your SADS login email",
+            "editor": "textfield",
+            "default": "kamil.ksiazek@ks-partners.pl"
+        },
+        "password": {
+            "title": "Password",
+            "type": "string",
+            "description": "Your SADS password",
+            "editor": "textfield",
+            "isSecret": true,
+            "default": "Kspartners#321"
+        },
+        "schemaName": {
+            "title": "Schema Name",
+            "type": "string",
+            "description": "Name of the schema to search for (e.g., 'Marcin Borkowski Nowe')",
+            "editor": "textfield",
+            "default": "Marcin Borkowski Nowe"
+        }
+    },
+    "required": ["username", "password", "schemaName"]
+}
