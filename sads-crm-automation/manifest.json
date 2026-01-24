@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SADS CRM Automation",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Automatyzacja wyszukiwania w SADS CRM - klikanie schematów i wyszukiwanie",
   "permissions": [
     "activeTab",

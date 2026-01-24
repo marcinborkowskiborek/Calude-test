@@ -1,6 +1,6 @@
 /**
  * SADS CRM Automation - Content Script
- * v2.1.1 - Dodane logowanie wiadomości
+ * v2.1.2 - Kontynuacja po przeładowaniu strony
  */
 
 (function() {
@@ -12,13 +12,38 @@
         delays: {
             afterClick: 1000,
             waitForModal: 2000,
-            waitForResults: 5000,      // Po kliknięciu "Wyszukaj"
-            waitForOfferChange: 5000,  // Po zmianie na 100 ofert
+            waitForResults: 3000,
+            waitForOfferChange: 3000,
             betweenActions: 1000
         }
     };
 
     let isRunning = false;
+
+    // Stany automatyzacji
+    const STEPS = {
+        IDLE: 'idle',
+        AFTER_SEARCH: 'after_search',      // Po kliknięciu Wyszukaj - czekamy na wyniki
+        AFTER_100_OFFERS: 'after_100'      // Po zmianie na 100 ofert
+    };
+
+    /**
+     * Zapisz stan do storage
+     */
+    function saveState(step, config = null) {
+        const state = { step, timestamp: Date.now() };
+        if (config) state.config = config;
+        chrome.storage.local.set({ automationState: state });
+        log(`Stan zapisany: ${step}`, 'info');
+    }
+
+    /**
+     * Wyczyść stan
+     */
+    function clearState() {
+        chrome.storage.local.remove('automationState');
+        log('Stan wyczyszczony', 'info');
+    }
 
     /**
      * Logowanie
@@ -175,7 +200,74 @@
     }
 
     /**
-     * GŁÓWNA FUNKCJA - wykonuje wszystko sekwencyjnie
+     * Wykonaj kroki po przeładowaniu strony (zmiana ofert, zaznaczenie, koszyk)
+     */
+    async function executePostReloadSteps() {
+        log('>>> Kontynuuję po przeładowaniu strony...', 'info');
+
+        await wait(CONFIG.delays.waitForResults);
+
+        // KROK 3: Zmień na 100 ofert
+        log('KROK 3: Zmieniam ilość ofert na 100...', 'info');
+        const changed = await changeOffersCount();
+        if (changed) {
+            log('KROK 3: OK - zmieniono na 100 ofert', 'success');
+            // Zapisz stan - strona może się przeładować
+            saveState(STEPS.AFTER_100_OFFERS);
+            log('Czekam na załadowanie 100 ofert...', 'info');
+            await wait(CONFIG.delays.waitForOfferChange);
+        } else {
+            log('KROK 3: SKIP - nie zmieniono (może już jest 100?)', 'warning');
+        }
+
+        // Kontynuuj z finalnymi krokami
+        await executeFinalSteps();
+    }
+
+    /**
+     * Wykonaj finalne kroki (zaznaczenie i koszyk)
+     */
+    async function executeFinalSteps() {
+        await wait(2000);
+
+        // KROK 4: Zaznacz wszystkie
+        log('KROK 4: Zaznaczam wszystkie oferty...', 'info');
+        let selected = selectAllOffers();
+        if (!selected) {
+            await wait(2000);
+            selected = selectAllOffers();
+        }
+        if (selected) {
+            log('KROK 4: OK - zaznaczono', 'success');
+        } else {
+            log('KROK 4: FAIL - nie zaznaczono', 'error');
+        }
+
+        await wait(CONFIG.delays.betweenActions);
+
+        // KROK 5: Dodaj do koszyka
+        log('KROK 5: Dodaję do koszyka...', 'info');
+        let carted = addToCart();
+        if (!carted) {
+            await wait(2000);
+            carted = addToCart();
+        }
+        if (carted) {
+            log('KROK 5: OK - dodano do koszyka', 'success');
+        } else {
+            log('KROK 5: FAIL - nie dodano', 'error');
+        }
+
+        log('========================================', 'success');
+        log('=== AUTOMATYZACJA ZAKOŃCZONA! ===', 'success');
+        log('========================================', 'success');
+
+        clearState();
+        isRunning = false;
+    }
+
+    /**
+     * GŁÓWNA FUNKCJA - wykonuje kroki 1-2 (przed przeładowaniem)
      */
     async function runFullAutomation() {
         if (isRunning) {
@@ -184,7 +276,7 @@
 
         isRunning = true;
         log('========================================', 'info');
-        log('=== ROZPOCZYNAM AUTOMATYZACJĘ v2.1.1 ===', 'info');
+        log('=== ROZPOCZYNAM AUTOMATYZACJĘ v2.1.2 ===', 'info');
         log('========================================', 'info');
 
         try {
@@ -206,65 +298,53 @@
             if (!searchButton) {
                 throw new Error(`Nie znaleziono schematu "${CONFIG.schemaName}"`);
             }
+
+            // ZAPISZ STAN PRZED KLIKNIĘCIEM (strona się przeładuje!)
+            saveState(STEPS.AFTER_SEARCH, { schemaName: CONFIG.schemaName });
+
             clickElement(searchButton);
-            log('KROK 2: OK - kliknięto "Wyszukaj"', 'success');
+            log('KROK 2: OK - kliknięto "Wyszukaj" (strona się przeładuje)', 'success');
 
-            // CZEKAJ na załadowanie wyników (5 sekund)
-            log(`Czekam ${CONFIG.delays.waitForResults/1000}s na załadowanie wyników...`, 'info');
-            await wait(CONFIG.delays.waitForResults);
-
-            // KROK 3: Zmień na 100 ofert
-            log('KROK 3: Zmieniam ilość ofert na 100...', 'info');
-            const changed = await changeOffersCount();
-            if (changed) {
-                log('KROK 3: OK - zmieniono na 100 ofert', 'success');
-                // CZEKAJ na przeładowanie (5 sekund)
-                log(`Czekam ${CONFIG.delays.waitForOfferChange/1000}s na załadowanie 100 ofert...`, 'info');
-                await wait(CONFIG.delays.waitForOfferChange);
-            } else {
-                log('KROK 3: SKIP - nie zmieniono (może już jest 100?)', 'warning');
-                await wait(2000);
-            }
-
-            // KROK 4: Zaznacz wszystkie
-            log('KROK 4: Zaznaczam wszystkie oferty...', 'info');
-            let selected = selectAllOffers();
-            if (!selected) {
-                await wait(2000);
-                selected = selectAllOffers();
-            }
-            if (selected) {
-                log('KROK 4: OK - zaznaczono', 'success');
-            } else {
-                log('KROK 4: FAIL - nie zaznaczono', 'error');
-            }
-
-            await wait(CONFIG.delays.betweenActions);
-
-            // KROK 5: Dodaj do koszyka
-            log('KROK 5: Dodaję do koszyka...', 'info');
-            let carted = addToCart();
-            if (!carted) {
-                await wait(2000);
-                carted = addToCart();
-            }
-            if (carted) {
-                log('KROK 5: OK - dodano do koszyka', 'success');
-            } else {
-                log('KROK 5: FAIL - nie dodano', 'error');
-            }
-
-            log('========================================', 'success');
-            log('=== AUTOMATYZACJA ZAKOŃCZONA! ===', 'success');
-            log('========================================', 'success');
-
-            isRunning = false;
-            return { success: true, message: 'Gotowe! Oferty dodane do koszyka.' };
+            return { success: true, message: 'Automatyzacja uruchomiona, strona się przeładuje...' };
 
         } catch (error) {
             log(`BŁĄD: ${error.message}`, 'error');
+            clearState();
             isRunning = false;
             return { success: false, message: error.message };
+        }
+    }
+
+    /**
+     * Sprawdź czy kontynuować automatyzację po przeładowaniu
+     */
+    async function checkAndContinue() {
+        const result = await chrome.storage.local.get('automationState');
+        const state = result.automationState;
+
+        if (!state) return;
+
+        // Sprawdź czy stan nie jest za stary (max 60 sekund)
+        if (Date.now() - state.timestamp > 60000) {
+            log('Stan automatyzacji za stary, czyszczę...', 'warning');
+            clearState();
+            return;
+        }
+
+        log(`>>> Znaleziono zapisany stan: ${state.step}`, 'info');
+
+        if (state.config && state.config.schemaName) {
+            CONFIG.schemaName = state.config.schemaName;
+        }
+
+        isRunning = true;
+
+        if (state.step === STEPS.AFTER_SEARCH) {
+            // Strona przeładowana po kliknięciu "Wyszukaj"
+            await executePostReloadSteps();
+        } else if (state.step === STEPS.AFTER_100_OFFERS) {
+            // Strona przeładowana po zmianie na 100 ofert
+            await executeFinalSteps();
         }
     }
 
@@ -299,6 +379,9 @@
         }
     });
 
-    log('Content script v2.1.1 załadowany', 'success');
+    log('Content script v2.1.2 załadowany', 'success');
+
+    // Sprawdź czy kontynuować automatyzację po przeładowaniu strony
+    checkAndContinue();
 
 })();
