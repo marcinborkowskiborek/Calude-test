@@ -1,6 +1,6 @@
 /**
  * SADS CRM Automation - Content Script
- * v2.0.8 - Proste podejście z długimi opóźnieniami
+ * v2.1.0 - Proste podejście z długimi opóźnieniami
  */
 
 (function() {
@@ -184,7 +184,7 @@
 
         isRunning = true;
         log('========================================', 'info');
-        log('=== ROZPOCZYNAM AUTOMATYZACJĘ v2.0.8 ===', 'info');
+        log('=== ROZPOCZYNAM AUTOMATYZACJĘ v2.1.0 ===', 'info');
         log('========================================', 'info');
 
         try {
@@ -296,6 +296,6 @@
         }
     });
 
-    log('Content script v2.0.8 załadowany', 'success');
+    log('Content script v2.1.0 załadowany', 'success');
 
 })();
