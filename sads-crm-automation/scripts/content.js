@@ -1,6 +1,6 @@
 /**
  * SADS CRM Automation - Content Script
- * v2.1.0 - Proste podejście z długimi opóźnieniami
+ * v2.1.1 - Dodane logowanie wiadomości
  */
 
 (function() {
@@ -184,7 +184,7 @@
 
         isRunning = true;
         log('========================================', 'info');
-        log('=== ROZPOCZYNAM AUTOMATYZACJĘ v2.1.0 ===', 'info');
+        log('=== ROZPOCZYNAM AUTOMATYZACJĘ v2.1.1 ===', 'info');
         log('========================================', 'info');
 
         try {
@@ -280,7 +280,10 @@
 
     // Nasłuchiwanie wiadomości
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        log('>>> Otrzymano wiadomość: ' + JSON.stringify(request), 'info');
+
         if (request.action === 'runAutomation') {
+            log('>>> Akcja runAutomation - uruchamiam...', 'info');
             if (request.config) {
                 updateConfig(request.config);
             }
@@ -296,6 +299,6 @@
         }
     });
 
-    log('Content script v2.1.0 załadowany', 'success');
+    log('Content script v2.1.1 załadowany', 'success');
 
 })();

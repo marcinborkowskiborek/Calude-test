@@ -1,6 +1,6 @@
 /**
  * SADS CRM Automation - Popup Script
- * v2.0.9 - Fire and forget (nie czekaj na odpowiedź)
+ * v2.1.1 - Dodane logowanie
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -46,10 +46,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Wyślij wiadomość BEZ czekania na odpowiedź (fire and forget)
+            console.log('[Popup] Tab ID:', tab.id, 'URL:', tab.url);
+            console.log('[Popup] Wysyłam wiadomość do tab:', tab.id);
+
+            // Wyślij wiadomość i czekaj na callback
             chrome.tabs.sendMessage(tab.id, {
                 action: 'runAutomation',
                 config: { schemaName }
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.error('[Popup] Błąd wysyłania:', chrome.runtime.lastError.message);
+                    showStatus('Błąd: ' + chrome.runtime.lastError.message, 'error');
+                } else {
+                    console.log('[Popup] Odpowiedź:', response);
+                }
             });
 
             // Od razu pokaż sukces - skrypt działa w tle
