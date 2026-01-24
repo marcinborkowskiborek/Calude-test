@@ -332,20 +332,20 @@
     }
 
     /**
-     * Główna funkcja automatyzacji
+     * ETAP 1: Otwórz schematy i kliknij "Wyszukaj"
      */
-    async function runAutomation() {
+    async function runStep1() {
         if (isRunning) {
             log('Automatyzacja już działa', 'warning');
             return { success: false, message: 'Automatyzacja już działa' };
         }
 
         isRunning = true;
-        log('Rozpoczynam automatyzację...', 'info');
+        log('=== ETAP 1: Wyszukiwanie ofert ===', 'info');
 
         try {
             // KROK 1: Znajdź i kliknij "Powiadomienia i schematy"
-            log('Krok 1: Szukam przycisku "Powiadomienia i schematy"...', 'info');
+            log('Szukam przycisku "Powiadomienia i schematy"...', 'info');
             const notifButton = findNotificationsButton();
 
             if (!notifButton) {
@@ -357,75 +357,94 @@
 
             // Czekamy na otwarcie modala
             await wait(CONFIG.delays.afterButtonClick);
-
-            // KROK 2: Poczekaj na modal CRM
-            log('Krok 2: Czekam na modal CRM...', 'info');
             await wait(CONFIG.delays.waitForModal);
 
-            const modal = findCRMModal();
-            if (!modal) {
-                log('Modal CRM może nie być widoczny, kontynuuję...', 'warning');
-            } else {
-                log('Modal CRM otwarty', 'success');
-            }
-
-            // KROK 3: Znajdź przycisk "Wyszukaj" dla konkretnego schematu
-            log(`Krok 3: Szukam przycisku "Wyszukaj" dla "${CONFIG.schemaName}"...`, 'info');
+            // KROK 2: Znajdź przycisk "Wyszukaj" dla konkretnego schematu
+            log(`Szukam przycisku "Wyszukaj" dla "${CONFIG.schemaName}"...`, 'info');
             await wait(CONFIG.delays.betweenActions);
 
             const searchButton = findSearchButtonForSchema(CONFIG.schemaName);
 
             if (!searchButton) {
-                throw new Error(`Nie znaleziono przycisku "Wyszukaj" dla schematu "${CONFIG.schemaName}"`);
+                throw new Error(`Nie znaleziono schematu "${CONFIG.schemaName}"`);
             }
 
-            // KROK 4: Kliknij przycisk "Wyszukaj"
-            log('Krok 4: Klikam przycisk "Wyszukaj"...', 'info');
-
+            // KROK 3: Kliknij przycisk "Wyszukaj"
             await wait(CONFIG.delays.betweenActions);
             clickElement(searchButton);
             log('Kliknięto przycisk "Wyszukaj"!', 'success');
 
-            // Czekamy na załadowanie wyników
-            log('Czekam na załadowanie wyników...', 'info');
-            await wait(3000); // Dłuższe oczekiwanie na załadowanie ofert
+            isRunning = false;
+            return {
+                success: true,
+                message: 'Etap 1 OK! Poczekaj na wyniki, potem kliknij Etap 2.'
+            };
 
-            // KROK 5: Zmień ilość ofert na 100
-            log('Krok 5: Zmieniam ilość ofert na 100...', 'info');
+        } catch (error) {
+            log(`Błąd: ${error.message}`, 'error');
+            isRunning = false;
+            return {
+                success: false,
+                message: error.message
+            };
+        }
+    }
+
+    /**
+     * ETAP 2: Zmień na 100 ofert, zaznacz wszystko, dodaj do koszyka
+     */
+    async function runStep2() {
+        if (isRunning) {
+            log('Automatyzacja już działa', 'warning');
+            return { success: false, message: 'Automatyzacja już działa' };
+        }
+
+        isRunning = true;
+        log('=== ETAP 2: Zaznaczanie i koszyk ===', 'info');
+
+        try {
+            // KROK 1: Zmień ilość ofert na 100
+            log('Zmieniam ilość ofert na 100...', 'info');
             await changeOffersCount();
 
-            // Czekamy na przeładowanie listy (dłużej - 100 ofert to dużo danych)
+            // Czekamy na przeładowanie listy
             log('Czekam na załadowanie 100 ofert...', 'info');
             await wait(4000);
 
-            // KROK 6: Zaznacz wszystkie oferty (z retry)
-            log('Krok 6: Zaznaczam wszystkie oferty...', 'info');
+            // KROK 2: Zaznacz wszystkie oferty
+            log('Zaznaczam wszystkie oferty...', 'info');
             let checkboxFound = selectAllOffers();
 
-            // Jeśli nie znaleziono, poczekaj i spróbuj ponownie
             if (!checkboxFound) {
-                log('Checkbox nie znaleziony, czekam i próbuję ponownie...', 'warning');
+                log('Checkbox nie znaleziony, próbuję ponownie...', 'warning');
                 await wait(2000);
                 checkboxFound = selectAllOffers();
             }
 
+            if (!checkboxFound) {
+                throw new Error('Nie znaleziono checkboxa "Zaznacz wszystko"');
+            }
+
             await wait(1000);
 
-            // KROK 7: Dodaj do koszyka (z retry)
-            log('Krok 7: Dodaję do koszyka...', 'info');
+            // KROK 3: Dodaj do koszyka
+            log('Dodaję do koszyka...', 'info');
             let cartClicked = addToCart();
 
-            // Jeśli nie znaleziono, poczekaj i spróbuj ponownie
             if (!cartClicked) {
-                log('Koszyk nie znaleziony, czekam i próbuję ponownie...', 'warning');
+                log('Koszyk nie znaleziony, próbuję ponownie...', 'warning');
                 await wait(2000);
                 cartClicked = addToCart();
+            }
+
+            if (!cartClicked) {
+                throw new Error('Nie znaleziono przycisku koszyka');
             }
 
             isRunning = false;
             return {
                 success: true,
-                message: 'Automatyzacja zakończona! Oferty dodane do koszyka.'
+                message: 'Gotowe! Oferty dodane do koszyka.'
             };
 
         } catch (error) {
@@ -453,16 +472,23 @@
 
     // Nasłuchiwanie wiadomości z popup
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === 'runAutomation') {
-            // Aktualizuj config jeśli przesłano
+        // ETAP 1: Wyszukaj oferty
+        if (request.action === 'runStep1') {
             if (request.config) {
                 updateConfig(request.config);
             }
-
-            runAutomation().then(result => {
+            runStep1().then(result => {
                 sendResponse(result);
             });
-            return true; // Async response
+            return true;
+        }
+
+        // ETAP 2: Zaznacz i dodaj do koszyka
+        if (request.action === 'runStep2') {
+            runStep2().then(result => {
+                sendResponse(result);
+            });
+            return true;
         }
 
         if (request.action === 'getStatus') {
