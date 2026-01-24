@@ -203,6 +203,106 @@
     }
 
     /**
+     * Zmienia ilość ofert na stronie (z 50 na 100)
+     */
+    async function changeOffersCount() {
+        log('Zmieniam ilość ofert na 100...', 'info');
+
+        // Znajdź dropdown z ilością ofert (pokazuje "50 ofert")
+        const dropdownTrigger = document.querySelector('.filter-option-inner-inner');
+
+        if (!dropdownTrigger) {
+            // Alternatywnie szukaj po tekście
+            const allDivs = document.querySelectorAll('div, button, span');
+            for (const div of allDivs) {
+                if ((div.textContent || '').trim() === '50 ofert') {
+                    clickElement(div.closest('button, .dropdown-toggle, [data-toggle]') || div);
+                    await wait(500);
+                    break;
+                }
+            }
+        } else {
+            // Kliknij w dropdown trigger (lub jego rodzica - przycisk)
+            const dropdownBtn = dropdownTrigger.closest('button, .dropdown-toggle, .bootstrap-select') || dropdownTrigger;
+            clickElement(dropdownBtn);
+            await wait(500);
+        }
+
+        // Poczekaj na rozwinięcie menu
+        await wait(CONFIG.delays.betweenActions);
+
+        // Znajdź opcję "100 ofert"
+        const option100 = Array.from(document.querySelectorAll('span.text, li a, .dropdown-item, option'))
+            .find(el => (el.textContent || '').trim() === '100 ofert');
+
+        if (option100) {
+            clickElement(option100.closest('a, li, option') || option100);
+            log('Wybrano 100 ofert', 'success');
+            return true;
+        }
+
+        log('Nie znaleziono opcji "100 ofert"', 'warning');
+        return false;
+    }
+
+    /**
+     * Zaznacza wszystkie oferty na stronie
+     */
+    function selectAllOffers() {
+        log('Zaznaczam wszystkie oferty...', 'info');
+
+        // Znajdź checkbox "checkAll"
+        const checkAllBox = document.querySelector('input.checkAll, input#checkAll, input[data-scope="list"]');
+
+        if (checkAllBox) {
+            // Upewnij się że nie jest już zaznaczony
+            if (!checkAllBox.checked) {
+                checkAllBox.click();
+                log('Zaznaczono wszystkie oferty', 'success');
+            } else {
+                log('Wszystkie oferty już zaznaczone', 'info');
+            }
+            return true;
+        }
+
+        log('Nie znaleziono checkboxa "checkAll"', 'warning');
+        return false;
+    }
+
+    /**
+     * Dodaje zaznaczone oferty do koszyka
+     */
+    function addToCart() {
+        log('Dodaję do koszyka...', 'info');
+
+        // Znajdź przycisk koszyka po ikonie glyphicon-shopping-cart
+        const cartIcon = document.querySelector('.glyphicon-shopping-cart');
+
+        if (cartIcon) {
+            const cartButton = cartIcon.closest('button, a, [role="button"], .btn') || cartIcon.parentElement;
+            if (cartButton) {
+                clickElement(cartButton);
+                log('Kliknięto przycisk koszyka', 'success');
+                return true;
+            }
+        }
+
+        // Alternatywnie szukaj przycisku z tytułem/tekstem "koszyk"
+        const buttons = document.querySelectorAll('button, a.btn');
+        for (const btn of buttons) {
+            const text = (btn.textContent || btn.title || '').toLowerCase();
+            if (text.includes('koszyk') || text.includes('cart')) {
+                clickElement(btn);
+                log('Kliknięto przycisk koszyka (alternatywna metoda)', 'success');
+                return true;
+            }
+        }
+
+        log('Nie znaleziono przycisku koszyka', 'warning');
+        return false;
+    }
+
+    /**
      * Kliknięcie z symulacją naturalnego zachowania
      */
     function clickElement(element) {
@@ -286,10 +386,31 @@
             clickElement(searchButton);
             log('Kliknięto przycisk "Wyszukaj"!', 'success');
 
+            // Czekamy na załadowanie wyników
+            log('Czekam na załadowanie wyników...', 'info');
+            await wait(3000); // Dłuższe oczekiwanie na załadowanie ofert
+
+            // KROK 5: Zmień ilość ofert na 100
+            log('Krok 5: Zmieniam ilość ofert na 100...', 'info');
+            await changeOffersCount();
+
+            // Czekamy na przeładowanie listy
+            await wait(2000);
+
+            // KROK 6: Zaznacz wszystkie oferty
+            log('Krok 6: Zaznaczam wszystkie oferty...', 'info');
+            selectAllOffers();
+
+            await wait(CONFIG.delays.betweenActions);
+
+            // KROK 7: Dodaj do koszyka
+            log('Krok 7: Dodaję do koszyka...', 'info');
+            addToCart();
+
             isRunning = false;
             return {
                 success: true,
-                message: 'Automatyzacja zakończona pomyślnie! Kliknięto przycisk Wyszukaj.'
+                message: 'Automatyzacja zakończona! Oferty dodane do koszyka.'
             };
 
         } catch (error) {
