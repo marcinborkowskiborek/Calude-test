@@ -133,72 +133,96 @@
     }
 
     /**
-     * Znajduje wiersz schematu po nazwie
+     * Znajduje przycisk "Wyszukaj" dla konkretnego schematu
+     * Nowe podejście: szukamy przycisku "Wyszukaj" którego kontener zawiera nazwę schematu
      */
-    function findSchemaRow(schemaName) {
-        // Szukamy wszystkich wierszy w tabeli/liście
-        const rows = document.querySelectorAll('tr, .row, [class*="row"], li, div[class*="item"]');
+    function findSearchButtonForSchema(schemaName) {
+        log(`Szukam przycisku "Wyszukaj" dla schematu: "${schemaName}"`, 'info');
 
-        for (const row of rows) {
-            const text = row.textContent || '';
-            if (text.includes(schemaName)) {
-                log(`Znaleziono wiersz schematu: "${schemaName}"`, 'success');
-                return row;
+        // Znajdź wszystkie przyciski zawierające tekst "Wyszukaj"
+        const allButtons = document.querySelectorAll('button, a.btn, .btn, [role="button"]');
+        const searchButtons = [];
+
+        for (const btn of allButtons) {
+            const text = btn.textContent || btn.title || '';
+            if (text.includes('Wyszukaj')) {
+                searchButtons.push(btn);
             }
         }
 
-        // Szukamy bezpośrednio elementu z tekstem
-        const allElements = document.querySelectorAll('*');
-        for (const el of allElements) {
-            if (el.childNodes.length <= 3) {
-                const text = el.textContent || '';
-                if (text.includes(schemaName) && text.length < 200) {
-                    // Zwracamy rodzica który może zawierać przycisk
-                    let parent = el.parentElement;
-                    for (let i = 0; i < 5 && parent; i++) {
-                        if (parent.querySelector('button, [class*="button"], .btn')) {
-                            return parent;
-                        }
-                        parent = parent.parentElement;
+        log(`Znaleziono ${searchButtons.length} przycisków "Wyszukaj"`, 'info');
+
+        // Dla każdego przycisku "Wyszukaj" sprawdź czy jego kontener zawiera nazwę schematu
+        for (const btn of searchButtons) {
+            // Szukamy w górę drzewa DOM kontenera który zawiera nazwę schematu
+            let container = btn.parentElement;
+
+            // Przechodzimy maksymalnie 10 poziomów w górę
+            for (let i = 0; i < 10 && container; i++) {
+                const containerText = container.textContent || '';
+
+                // Sprawdzamy czy kontener zawiera nazwę schematu
+                if (containerText.includes(schemaName)) {
+                    // Upewniamy się że to nie jest zbyt duży kontener (np. cały modal)
+                    // Kontener nie powinien zawierać więcej niż kilka przycisków "Wyszukaj"
+                    const buttonsInContainer = container.querySelectorAll('button, .btn');
+                    const searchButtonsInContainer = Array.from(buttonsInContainer).filter(b =>
+                        (b.textContent || '').includes('Wyszukaj')
+                    );
+
+                    // Jeśli kontener ma tylko 1 przycisk "Wyszukaj" - to nasz wiersz!
+                    if (searchButtonsInContainer.length === 1) {
+                        log(`Znaleziono przycisk "Wyszukaj" dla "${schemaName}" (kontener: ${container.tagName}.${container.className})`, 'success');
+                        return btn;
                     }
-                    return el.closest('tr, .row, li, div') || el.parentElement;
+                }
+
+                container = container.parentElement;
+            }
+        }
+
+        // Alternatywna metoda: znajdź element z tekstem schematu i szukaj przycisku w pobliżu
+        log('Próbuję alternatywnej metody...', 'info');
+
+        const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: (node) => {
+                    if (node.textContent.includes(schemaName)) {
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                    return NodeFilter.FILTER_REJECT;
                 }
             }
-        }
+        );
 
-        return null;
-    }
+        let textNode;
+        while (textNode = walker.nextNode()) {
+            // Znaleźliśmy tekst, teraz szukamy najbliższego przycisku "Wyszukaj"
+            let element = textNode.parentElement;
 
-    /**
-     * Znajduje przycisk "Wyszukaj" w wierszu
-     */
-    function findSearchButton(row) {
-        // Szukamy przycisku z tekstem "Wyszukaj" lub ikoną lupy
-        const buttons = row.querySelectorAll('button, a.btn, [class*="button"], [role="button"]');
+            for (let i = 0; i < 15 && element; i++) {
+                const searchBtn = element.querySelector('button.btn-success, .btn-success, button:has(.glyphicon-search)');
+                if (searchBtn && (searchBtn.textContent || '').includes('Wyszukaj')) {
+                    log(`Znaleziono przycisk alternatywną metodą`, 'success');
+                    return searchBtn;
+                }
 
-        for (const btn of buttons) {
-            const text = btn.textContent || btn.title || btn.getAttribute('aria-label') || '';
-            if (text.includes('Wyszukaj') || text.includes('Szukaj') || text.includes('Search')) {
-                log(`Znaleziono przycisk "Wyszukaj"`, 'success');
-                return btn;
-            }
+                // Szukamy też po tekście
+                const btns = element.querySelectorAll('button, .btn');
+                for (const b of btns) {
+                    if ((b.textContent || '').includes('Wyszukaj')) {
+                        // Sprawdź czy to nie jest przycisk z innego wiersza
+                        const parentText = b.closest('div, tr, li')?.textContent || '';
+                        if (parentText.includes(schemaName)) {
+                            log(`Znaleziono przycisk "Wyszukaj" alternatywną metodą`, 'success');
+                            return b;
+                        }
+                    }
+                }
 
-            // Sprawdzamy czy ma ikonę lupy (fa-search, search icon)
-            if (btn.querySelector('[class*="search"], .fa-search, .icon-search')) {
-                return btn;
-            }
-        }
-
-        // Szukamy zielonego przycisku (na screenie jest zielony)
-        for (const btn of buttons) {
-            const style = window.getComputedStyle(btn);
-            const bgColor = style.backgroundColor;
-            // Zielony kolor
-            if (bgColor.includes('rgb(76, 175, 80)') ||
-                bgColor.includes('rgb(40, 167, 69)') ||
-                btn.classList.contains('btn-success') ||
-                btn.classList.contains('btn-green')) {
-                return btn;
+                element = element.parentElement;
             }
         }
 
@@ -272,22 +296,18 @@
                 log('Modal CRM otwarty', 'success');
             }
 
-            // KROK 3: Znajdź wiersz schematu
-            log(`Krok 3: Szukam wiersza "${CONFIG.schemaName}"...`, 'info');
+            // KROK 3: Znajdź przycisk "Wyszukaj" dla konkretnego schematu
+            log(`Krok 3: Szukam przycisku "Wyszukaj" dla "${CONFIG.schemaName}"...`, 'info');
             await wait(CONFIG.delays.betweenActions);
 
-            const schemaRow = findSchemaRow(CONFIG.schemaName);
-            if (!schemaRow) {
-                throw new Error(`Nie znaleziono wiersza "${CONFIG.schemaName}"`);
-            }
-
-            // KROK 4: Znajdź i kliknij przycisk "Wyszukaj"
-            log('Krok 4: Szukam przycisku "Wyszukaj"...', 'info');
-            const searchButton = findSearchButton(schemaRow);
+            const searchButton = findSearchButtonForSchema(CONFIG.schemaName);
 
             if (!searchButton) {
-                throw new Error('Nie znaleziono przycisku "Wyszukaj" w wierszu schematu');
+                throw new Error(`Nie znaleziono przycisku "Wyszukaj" dla schematu "${CONFIG.schemaName}"`);
             }
+
+            // KROK 4: Kliknij przycisk "Wyszukaj"
+            log('Krok 4: Klikam przycisk "Wyszukaj"...', 'info');
 
             await wait(CONFIG.delays.betweenActions);
             clickElement(searchButton);
