@@ -1,0 +1,101 @@
+{
+  "$schema": "https://dev-docs.marketplace.cake.com/schema/manifest.json",
+  "key": "clockify-task-bot",
+  "name": "Task Bot - AI Classification",
+  "description": "AI-powered assistant that helps employees select the correct task and project based on their work description. Uses Claude AI with extended thinking to match tasks from your Google Sheets knowledge base.",
+  "shortDescription": "AI Task Classification Bot",
+  "version": "1.0.0",
+  "vendor": {
+    "name": "We Are Future",
+    "url": "https://wearefuture.pl",
+    "email": "support@wearefuture.pl"
+  },
+  "lifecycle": {
+    "installed": {
+      "url": "/api/clockify/installed"
+    },
+    "uninstalled": {
+      "url": "/api/clockify/uninstalled"
+    },
+    "settings": {
+      "url": "/api/clockify/settings"
+    }
+  },
+  "modules": {
+    "webhooks": [],
+    "components": [
+      {
+        "key": "task-bot-widget",
+        "name": "Task Bot",
+        "description": "AI-powered task classification panel",
+        "type": "widget",
+        "location": "TIME_ENTRY",
+        "options": {
+          "url": "/index.html",
+          "width": "400px",
+          "height": "600px"
+        }
+      },
+      {
+        "key": "task-bot-sidebar",
+        "name": "Task Bot",
+        "description": "Open Task Bot in sidebar",
+        "type": "sidebar",
+        "options": {
+          "url": "/index.html",
+          "iconUrl": "/icon.svg"
+        }
+      }
+    ]
+  },
+  "authentication": {
+    "type": "ADDON_TOKEN",
+    "tokenScopes": [
+      "WORKSPACE_READ",
+      "PROJECT_READ",
+      "TASK_READ",
+      "TAG_READ",
+      "TAG_WRITE",
+      "TIME_ENTRY_WRITE"
+    ]
+  },
+  "scopes": [
+    "WORKSPACE_READ",
+    "PROJECT_READ",
+    "TASK_READ",
+    "TAG_READ",
+    "TAG_WRITE",
+    "TIME_ENTRY_WRITE"
+  ],
+  "categories": [
+    "PRODUCTIVITY",
+    "AUTOMATION"
+  ],
+  "tags": [
+    "ai",
+    "task-management",
+    "automation",
+    "time-tracking",
+    "classification"
+  ],
+  "icons": {
+    "16": "/icons/icon-16.png",
+    "32": "/icons/icon-32.png",
+    "48": "/icons/icon-48.png",
+    "128": "/icons/icon-128.png"
+  },
+  "screenshots": [
+    {
+      "url": "/screenshots/main-panel.png",
+      "caption": "Task Bot main classification panel"
+    },
+    {
+      "url": "/screenshots/result.png",
+      "caption": "Classification result with suggestions"
+    }
+  ],
+  "privacyPolicy": "https://wearefuture.pl/privacy",
+  "termsOfService": "https://wearefuture.pl/terms",
+  "supportUrl": "https://wearefuture.pl/support",
+  "documentationUrl": "https://wearefuture.pl/docs/task-bot"
+}
