@@ -1,0 +1,53 @@
+{
+  "$schema": "https://dev-docs.marketplace.cake.com/schema/manifest.json",
+  "key": "clockify-task-bot",
+  "name": "Task Bot - AI Classification",
+  "description": "AI-powered assistant that helps employees select the correct task and project based on their work description. Uses Claude AI to match tasks from your knowledge base.",
+  "shortDescription": "AI Task Classification Bot",
+  "version": "1.0.0",
+  "vendor": {
+    "name": "We Are Future",
+    "url": "https://wearefuture.pl",
+    "email": "support@wearefuture.pl"
+  },
+  "lifecycle": {
+    "installed": {
+      "url": "https://clockify-task-bot.vercel.app/api/clockify/installed"
+    },
+    "uninstalled": {
+      "url": "https://clockify-task-bot.vercel.app/api/clockify/uninstalled"
+    },
+    "settings": {
+      "url": "https://clockify-task-bot.vercel.app/api/clockify/settings"
+    }
+  },
+  "modules": {
+    "webhooks": [],
+    "components": [
+      {
+        "key": "task-bot-widget",
+        "name": "Task Bot",
+        "description": "AI-powered task classification panel",
+        "type": "widget",
+        "location": "TIME_ENTRY",
+        "options": {
+          "url": "https://clockify-task-bot.vercel.app/",
+          "width": "420px",
+          "height": "650px"
+        }
+      }
+    ]
+  },
+  "authentication": {
+    "type": "NONE"
+  },
+  "scopes": [],
+  "categories": [
+    "PRODUCTIVITY"
+  ],
+  "tags": [
+    "ai",
+    "task-management",
+    "automation"
+  ]
+}
