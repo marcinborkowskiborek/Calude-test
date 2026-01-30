@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.3",
   "key": "clockify-task-bot",
-  "name": "Task Bot - AI Classification",
+  "name": "Task Bot",
   "baseUrl": "https://clockify-task-bot.vercel.app",
   "description": "AI-powered assistant that helps employees select the correct task and project based on their work description.",
   "iconPath": "/icon.svg",
