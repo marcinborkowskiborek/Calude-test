@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "AI-powered task classification bot for Clockify using Claude with extended thinking",
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "lint": "eslint src/**/*.ts"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
@@ -23,10 +23,7 @@
     "@types/cors": "^2.8.17",
     "@types/node": "^22.0.0",
     "typescript": "^5.6.0",
-    "tsx": "^4.19.0",
-    "eslint": "^9.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0"
+    "tsx": "^4.19.0"
   },
   "engines": {
     "node": ">=20.0.0"
