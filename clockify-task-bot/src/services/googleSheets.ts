@@ -7,13 +7,30 @@ let cacheTimestamp: number = 0;
 const CACHE_TTL = parseInt(process.env.SHEETS_CACHE_TTL || '300') * 1000; // Convert to ms
 
 /**
+ * Parse private key - handles both escaped \n and real newlines
+ */
+function parsePrivateKey(key: string | undefined): string | undefined {
+  if (!key) return undefined;
+
+  // If key contains literal \n (escaped), replace with real newlines
+  if (key.includes('\\n')) {
+    return key.replace(/\\n/g, '\n');
+  }
+
+  // If key is already properly formatted, return as-is
+  return key;
+}
+
+/**
  * Initialize Google Sheets API client
  */
 function getGoogleSheetsClient(): sheets_v4.Sheets {
+  const privateKey = parsePrivateKey(process.env.GOOGLE_PRIVATE_KEY);
+
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      private_key: privateKey,
     },
     scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
   });
