@@ -55,7 +55,7 @@ async function clockifyRequest<T>(
     throw new Error(`Clockify API error: ${response.status} - ${errorText}`);
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
 /**
