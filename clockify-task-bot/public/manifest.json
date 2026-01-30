@@ -28,8 +28,8 @@
       "path": "/index.html",
       "accessLevel": "EVERYONE",
       "iconPath": "/icon.svg",
-      "width": "420px",
-      "height": "650px"
+      "width": 420,
+      "height": 650
     }
   ],
   "webhooks": []
