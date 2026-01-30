@@ -57,14 +57,19 @@ async function fetchProjects(sheets: sheets_v4.Sheets): Promise<Project[]> {
   }
 
   // Skip header row
+  // Columns: B=Dział (index 1), D=Nazwa Klienta (index 3), F=PROJECT ID (index 5)
   const projects: Project[] = [];
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (row[0] && row[1] && row[2]) { // Ensure we have department, client name, and project ID
+    const department = row[1]; // Column B
+    const clientName = row[3]; // Column D
+    const projectId = row[5];  // Column F
+
+    if (department && clientName && projectId) {
       projects.push({
-        department: String(row[0]).trim(),
-        clientName: String(row[1]).trim(),
-        projectId: String(row[2]).trim(),
+        department: String(department).trim(),
+        clientName: String(clientName).trim(),
+        projectId: String(projectId).trim(),
       });
     }
   }
