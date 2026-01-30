@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clockify Task Bot</title>
+  <style>
+    :root {
+      --primary: #03A9F4;
+      --primary-dark: #0288D1;
+      --success: #4CAF50;
+      --warning: #FF9800;
+      --error: #F44336;
+      --text: #333;
+      --text-light: #666;
+      --bg: #fff;
+      --bg-secondary: #f5f5f5;
+      --border: #e0e0e0;
+      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 12px;
+      color: var(--text-light);
+    }
+
+    .input-section {
+      margin-bottom: 16px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    textarea::placeholder {
+      color: #999;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #e8e8e8;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .result-section {
+      display: none;
+      margin-top: 16px;
+    }
+
+    .result-section.visible {
+      display: block;
+    }
+
+    .result-card {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .confidence-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 12px;
+      text-transform: uppercase;
+    }
+
+    .confidence-high {
+      background: #E8F5E9;
+      color: var(--success);
+    }
+
+    .confidence-medium {
+      background: #FFF3E0;
+      color: var(--warning);
+    }
+
+    .confidence-low {
+      background: #FFEBEE;
+      color: var(--error);
+    }
+
+    .result-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .result-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      font-size: 14px;
+    }
+
+    .result-content {
+      flex: 1;
+    }
+
+    .result-label {
+      font-size: 11px;
+      color: var(--text-light);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .result-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .result-value.monospace {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 13px;
+      background: #e8e8e8;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .tag {
+      font-size: 12px;
+      padding: 3px 8px;
+      background: var(--primary);
+      color: white;
+      border-radius: 12px;
+    }
+
+    .reasoning {
+      margin-top: 12px;
+      padding: 12px;
+      background: white;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-light);
+      border-left: 3px solid var(--primary);
+    }
+
+    .reasoning-header {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .error-message {
+      background: #FFEBEE;
+      color: var(--error);
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .clarification {
+      background: #FFF3E0;
+      color: #E65100;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .actions .btn {
+      flex: 1;
+    }
+
+    .hint-section {
+      margin-top: 12px;
+    }
+
+    .hint-input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    .alternatives {
+      margin-top: 12px;
+    }
+
+    .alternatives-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-light);
+      margin-bottom: 8px;
+    }
+
+    .alternative-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      background: white;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .alternative-item:hover {
+      background: #e3f2fd;
+    }
+
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-light);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 Task Bot</h1>
+    <p>Wpisz co robiłeś, a znajdę odpowiedni task</p>
+  </div>
+
+  <div class="input-section">
+    <label class="input-label" for="description">Co robiłeś?</label>
+    <div class="input-wrapper">
+      <textarea
+        id="description"
+        placeholder="np. przygotowywałem prezentację dla Henkel na szkolenie AI"
+      ></textarea>
+    </div>
+  </div>
+
+  <div class="hint-section" id="hintSection" style="display: none;">
+    <label class="input-label" for="clientHint">Wskazówka o kliencie (opcjonalne)</label>
+    <input
+      type="text"
+      id="clientHint"
+      class="hint-input"
+      placeholder="np. Henkel, Orange, Stock"
+    />
+  </div>
+
+  <button class="btn btn-primary" id="classifyBtn">
+    <span id="btnText">🔍 Znajdź task</span>
+    <div class="spinner" id="spinner" style="display: none;"></div>
+  </button>
+
+  <div class="result-section" id="resultSection">
+    <div class="result-card" id="resultCard">
+      <div class="result-header">
+        <strong>Wynik klasyfikacji</strong>
+        <span class="confidence-badge" id="confidenceBadge">-</span>
+      </div>
+
+      <div id="resultContent">
+        <!-- Dynamic content -->
+      </div>
+
+      <div class="reasoning" id="reasoning" style="display: none;">
+        <div class="reasoning-header">💭 Rozumowanie AI</div>
+        <div id="reasoningText"></div>
+      </div>
+
+      <div class="clarification" id="clarification" style="display: none;">
+        <strong>❓ Potrzebuję więcej informacji:</strong>
+        <div id="clarificationText"></div>
+      </div>
+
+      <div class="alternatives" id="alternatives" style="display: none;">
+        <div class="alternatives-header">Inne możliwości:</div>
+        <div id="alternativesList"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-secondary" id="copyBtn">📋 Kopiuj</button>
+      <button class="btn btn-primary" id="useBtn">✓ Użyj w Clockify</button>
+    </div>
+  </div>
+
+  <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+  <div class="footer">
+    Powered by Claude AI • We Are Future
+  </div>
+
+  <script>
+    // Configuration
+    const API_BASE = window.location.origin;
+
+    // DOM Elements
+    const descriptionEl = document.getElementById('description');
+    const clientHintEl = document.getElementById('clientHint');
+    const hintSectionEl = document.getElementById('hintSection');
+    const classifyBtn = document.getElementById('classifyBtn');
+    const btnText = document.getElementById('btnText');
+    const spinner = document.getElementById('spinner');
+    const resultSection = document.getElementById('resultSection');
+    const resultCard = document.getElementById('resultCard');
+    const resultContent = document.getElementById('resultContent');
+    const confidenceBadge = document.getElementById('confidenceBadge');
+    const reasoning = document.getElementById('reasoning');
+    const reasoningText = document.getElementById('reasoningText');
+    const clarification = document.getElementById('clarification');
+    const clarificationText = document.getElementById('clarificationText');
+    const alternatives = document.getElementById('alternatives');
+    const alternativesList = document.getElementById('alternativesList');
+    const errorMessage = document.getElementById('errorMessage');
+    const copyBtn = document.getElementById('copyBtn');
+    const useBtn = document.getElementById('useBtn');
+
+    let currentResult = null;
+
+    // Classify task
+    async function classifyTask() {
+      const description = descriptionEl.value.trim();
+      if (!description) {
+        showError('Wpisz co robiłeś');
+        return;
+      }
+
+      setLoading(true);
+      hideError();
+      resultSection.classList.remove('visible');
+
+      try {
+        const response = await fetch(`${API_BASE}/api/classify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            description,
+            clientHint: clientHintEl.value.trim() || undefined,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Błąd klasyfikacji');
+        }
+
+        currentResult = data.data;
+        displayResult(data.data);
+
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Display classification result
+    function displayResult(result) {
+      resultSection.classList.add('visible');
+
+      // Confidence badge
+      confidenceBadge.textContent = {
+        high: 'Wysoka pewność',
+        medium: 'Średnia pewność',
+        low: 'Niska pewność'
+      }[result.confidence] || result.confidence;
+
+      confidenceBadge.className = `confidence-badge confidence-${result.confidence}`;
+
+      // Result content
+      if (result.success && result.task) {
+        resultContent.innerHTML = `
+          <div class="result-item">
+            <div class="result-icon">📋</div>
+            <div class="result-content">
+              <div class="result-label">Task</div>
+              <div class="result-value">${result.task.taskId} - ${result.task.taskName}</div>
+            </div>
+          </div>
+          <div class="result-item">
+            <div class="result-icon">📁</div>
+            <div class="result-content">
+              <div class="result-label">Project ID</div>
+              <div class="result-value monospace">${result.projectId || 'Brak'}</div>
+            </div>
+          </div>
+          <div class="result-item">
+            <div class="result-icon">🏷️</div>
+            <div class="result-content">
+              <div class="result-label">Tagi</div>
+              <div class="tags">
+                ${result.tags.length > 0
+                  ? result.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+                  : '<span style="color: #999;">Brak tagów</span>'
+                }
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        resultContent.innerHTML = `
+          <div class="error-message">
+            ${result.noMatchReason || 'Nie udało się dopasować tasku'}
+          </div>
+        `;
+      }
+
+      // Reasoning
+      if (result.reasoning) {
+        reasoning.style.display = 'block';
+        reasoningText.textContent = result.reasoning;
+      } else {
+        reasoning.style.display = 'none';
+      }
+
+      // Clarification
+      if (result.clarificationNeeded) {
+        clarification.style.display = 'block';
+        clarificationText.textContent = result.clarificationNeeded;
+        hintSectionEl.style.display = 'block';
+      } else {
+        clarification.style.display = 'none';
+      }
+
+      // Alternatives
+      if (result.alternatives && result.alternatives.length > 0) {
+        alternatives.style.display = 'block';
+        alternativesList.innerHTML = result.alternatives.map(alt => `
+          <div class="alternative-item" onclick="selectAlternative('${alt.task.taskId}', '${alt.task.taskName}', '${alt.projectId || ''}')">
+            <span>${alt.task.taskId} - ${alt.task.taskName}</span>
+            <span style="margin-left: auto; color: #999;">${Math.round(alt.confidence * 100)}%</span>
+          </div>
+        `).join('');
+      } else {
+        alternatives.style.display = 'none';
+      }
+    }
+
+    // Select alternative
+    function selectAlternative(taskId, taskName, projectId) {
+      if (currentResult) {
+        currentResult.task = { taskId, taskName, projectCategory: '' };
+        currentResult.projectId = projectId;
+        displayResult(currentResult);
+      }
+    }
+
+    // Copy result to clipboard
+    function copyResult() {
+      if (!currentResult || !currentResult.task) return;
+
+      const text = `Task: ${currentResult.task.taskId} - ${currentResult.task.taskName}
+Project ID: ${currentResult.projectId || 'N/A'}
+Tags: ${currentResult.tags.join(', ') || 'Brak'}`;
+
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = '✓ Skopiowano!';
+        setTimeout(() => { copyBtn.textContent = '📋 Kopiuj'; }, 2000);
+      });
+    }
+
+    // Use in Clockify (placeholder - integrate with Clockify SDK in add-on)
+    function useInClockify() {
+      if (!currentResult || !currentResult.task) return;
+
+      // For standalone: copy to clipboard
+      // For Clockify Add-on: use SDK to fill form
+      const data = {
+        description: descriptionEl.value,
+        projectId: currentResult.projectId,
+        taskId: currentResult.task.taskId,
+        tags: currentResult.tags,
+      };
+
+      // Try to communicate with parent (Clockify iframe)
+      if (window.parent !== window) {
+        window.parent.postMessage({
+          type: 'CLOCKIFY_TASK_BOT_RESULT',
+          data,
+        }, '*');
+      }
+
+      useBtn.textContent = '✓ Wysłano!';
+      setTimeout(() => { useBtn.textContent = '✓ Użyj w Clockify'; }, 2000);
+    }
+
+    // UI Helpers
+    function setLoading(loading) {
+      classifyBtn.disabled = loading;
+      btnText.style.display = loading ? 'none' : 'inline';
+      spinner.style.display = loading ? 'inline-block' : 'none';
+    }
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+    }
+
+    function hideError() {
+      errorMessage.style.display = 'none';
+    }
+
+    // Event listeners
+    classifyBtn.addEventListener('click', classifyTask);
+    copyBtn.addEventListener('click', copyResult);
+    useBtn.addEventListener('click', useInClockify);
+
+    descriptionEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        classifyTask();
+      }
+    });
+
+    // Listen for messages from Clockify parent
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'CLOCKIFY_INIT') {
+        console.log('Initialized in Clockify context');
+      }
+    });
+  </script>
+</body>
+</html>
