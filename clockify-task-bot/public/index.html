@@ -395,11 +395,6 @@
         <div id="alternativesList"></div>
       </div>
     </div>
-
-    <div class="actions">
-      <button class="btn btn-secondary" id="copyBtn">📋 Kopiuj</button>
-      <button class="btn btn-primary" id="useBtn">✓ Użyj w Clockify</button>
-    </div>
   </div>
 
   <div class="error-message" id="errorMessage" style="display: none;"></div>
@@ -430,8 +425,6 @@
     const alternatives = document.getElementById('alternatives');
     const alternativesList = document.getElementById('alternativesList');
     const errorMessage = document.getElementById('errorMessage');
-    const copyBtn = document.getElementById('copyBtn');
-    const useBtn = document.getElementById('useBtn');
 
     let currentResult = null;
 
@@ -564,45 +557,6 @@
       }
     }
 
-    // Copy result to clipboard
-    function copyResult() {
-      if (!currentResult || !currentResult.task) return;
-
-      const text = `Task: ${currentResult.task.taskId} - ${currentResult.task.taskName}
-Project ID: ${currentResult.projectId || 'N/A'}
-Tags: ${currentResult.tags.join(', ') || 'Brak'}`;
-
-      navigator.clipboard.writeText(text).then(() => {
-        copyBtn.textContent = '✓ Skopiowano!';
-        setTimeout(() => { copyBtn.textContent = '📋 Kopiuj'; }, 2000);
-      });
-    }
-
-    // Use in Clockify (placeholder - integrate with Clockify SDK in add-on)
-    function useInClockify() {
-      if (!currentResult || !currentResult.task) return;
-
-      // For standalone: copy to clipboard
-      // For Clockify Add-on: use SDK to fill form
-      const data = {
-        description: descriptionEl.value,
-        projectId: currentResult.projectId,
-        taskId: currentResult.task.taskId,
-        tags: currentResult.tags,
-      };
-
-      // Try to communicate with parent (Clockify iframe)
-      if (window.parent !== window) {
-        window.parent.postMessage({
-          type: 'CLOCKIFY_TASK_BOT_RESULT',
-          data,
-        }, '*');
-      }
-
-      useBtn.textContent = '✓ Wysłano!';
-      setTimeout(() => { useBtn.textContent = '✓ Użyj w Clockify'; }, 2000);
-    }
-
     // UI Helpers
     function setLoading(loading) {
       classifyBtn.disabled = loading;
@@ -621,8 +575,6 @@ Tags: ${currentResult.tags.join(', ') || 'Brak'}`;
 
     // Event listeners
     classifyBtn.addEventListener('click', classifyTask);
-    copyBtn.addEventListener('click', copyResult);
-    useBtn.addEventListener('click', useInClockify);
 
     descriptionEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
